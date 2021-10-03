@@ -1,57 +1,87 @@
-import dagger.Binds
-import remotecontrolbackend.AuthComponent
+import dagger.BindsInstance
 import dagger.Component
 import dagger.Module
 import dagger.Provides
-import dagger.internal.SetFactory
-import remotecontrolbackend.AuthScope
-import remotecontrolbackend.NettyKotlinShit
-import remotecontrolbackend.auth_part.AbstractAuthHandler
-import remotecontrolbackend.auth_part.ConcreteAuthHandler
-import remotecontrolbackend.auth_part.MockAuthHandler
-import remotecontrolbackend.request_handler_part.AbstractRequestHandler
-import remotecontrolbackend.request_handler_part.MockRequestHandler
+import remotecontrolbackend.Main
+
+import remotecontrolbackend.dagger.DnsSdSubComponent
+import remotecontrolbackend.dagger.NettySubComponent
+import remotecontrolbackend.dns_sd_part.DnsSdManager
+import remotecontrolbackend.netty_part.NettyConnectionManager
+import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
+import remotecontrolbackend.netty_part.request_handler_part.AbstractRequestHandler
+import javax.inject.Named
 import javax.inject.Singleton
 
-@Component(modules = arrayOf(TestMainModule::class, AuthSubcomponentModule::class))
-abstract class MainComponent {
-    abstract fun inject(mainClass: NettyKotlinShit)
+@Singleton
+@Component(modules = arrayOf(TestMainModule::class,NettySubcomponentModule::class, DnsSdSubcomponentModule::class))
+interface MainComponent {
+    fun inject(mainClass: Main)
+
+    @Component.Builder
+    interface MainBuilder{
+        fun buildMainComponent():MainComponent
+        @BindsInstance
+        fun setPort(@Named("port") portN:Int):MainBuilder
+
+        @BindsInstance
+        fun isTestRun(@Named("isTest") isTest:Boolean):MainBuilder
+
+    }
 
 }
 
 
 @Module
-interface RealMainModule {
-    @Binds
-    fun bindsRealAuthHandler(handler: ConcreteAuthHandler): AbstractAuthHandler
+interface ConcreteMainModule {
 
 }
 
 @Module
 interface TestMainModule {
-    @Binds
-    abstract fun bindsMockRequestHandler(handler: MockRequestHandler): AbstractRequestHandler
 
-    //ToDo Will be implemented later for now it's real
-    @Binds
-    abstract fun bindsMockAuthHandler(handler: MockAuthHandler): AbstractAuthHandler
 }
 
-@Module(subcomponents = arrayOf(AuthComponent::class))
-interface AuthSubcomponentModule {
-    companion object {
-        @Provides
-        fun provideAuthComponent(authComponentBuilder:AuthComponent.AuthBuilder):AuthComponent{
-            return authComponentBuilder.build()
-        }
-        @Provides
-        fun provideConcreteAuthHandler(authComponent: AuthComponent): ConcreteAuthHandler {
-            return ConcreteAuthHandler(authComponent)
-        }
-        @Provides
-        fun provideMockAuthHandler(authComponent: AuthComponent): MockAuthHandler {
-            return MockAuthHandler(authComponent)
-        }
+
+
+
+
+@Module(subcomponents = [DnsSdSubComponent::class])
+interface DnsSdSubcomponentModule{
+companion object{
+    @Provides
+    fun provideDnsSdManager(dnsSdSubComponentBuilder: DnsSdSubComponent.DnsSdSubComponentBuilder,
+                             @Named("port")portN: Int):DnsSdManager{
+        return DnsSdManager(dnsSdSubComponentBuilder,portN)
     }
 }
+        }
+
+
+    @Module(subcomponents = [NettySubComponent::class])
+    interface NettySubcomponentModule{
+companion object {
+    @Provides
+    fun provideNettyManager(nettySubComponentBuilder: NettySubComponent.NettySubComponentBuilder,
+    @Named("port")portN: Int):NettyConnectionManager{
+        return NettyConnectionManager(nettySubComponentBuilder,portN)
+    }
+//    @Provides
+//    fun provideAuthHandler(
+//        nettySubComponentBuilder: NettySubComponent.NettySubComponentBuilder
+//                          ):AbstractAuthHandler{
+//    return nettySubComponentBuilder.buildNettySubcomponent().getAuthHandler()
+//    }
+//
+//    @Provides
+//    fun provideRhHandler(
+//        nettySubComponentBuilder: NettySubComponent.NettySubComponentBuilder
+//    ):AbstractRequestHandler{
+//        return nettySubComponentBuilder.buildNettySubcomponent().getRequestHandler()
+//    }
+
+
+    }
+    }
+
 

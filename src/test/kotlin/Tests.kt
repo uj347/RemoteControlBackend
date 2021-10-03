@@ -1,8 +1,7 @@
 import io.netty.handler.codec.http.*
 import org.junit.Test
-import remotecontrolbackend.auth_part.asciiToBase64
-import remotecontrolbackend.auth_part.base64ToAscii
-import kotlin.test.assertContains
+import remotecontrolbackend.netty_part.auth_part.asciiToBase64
+import remotecontrolbackend.netty_part.auth_part.base64ToAscii
 
 import kotlin.test.assertEquals
 

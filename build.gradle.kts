@@ -24,6 +24,8 @@ dependencies {
     implementation("org.jmdns:jmdns:3.5.7")
     implementation("io.netty:netty-all:4.1.68.Final")
     implementation ("com.google.dagger:dagger:2.38.1")
+    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.12.0")
+    implementation("com.squareup.moshi:moshi:1.12.0")
     kapt ("com.google.dagger:dagger-compiler:2.38.1")
 }
 
