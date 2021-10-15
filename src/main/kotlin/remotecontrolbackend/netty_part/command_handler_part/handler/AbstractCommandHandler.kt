@@ -1,0 +1,9 @@
+package remotecontrolbackend.netty_part.command_handler_part.handler
+
+import io.netty.channel.ChannelHandler
+import io.netty.channel.SimpleChannelInboundHandler
+import remotecontrolbackend.dagger.CommandHandlerSubcomponent
+import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
+@ChannelHandler.Sharable
+abstract class AbstractCommandHandler(commandHandlerSCBuilder: CommandHandlerSubcomponent.CommHandlerSCBuilder)
+    :SimpleChannelInboundHandler<Command>()

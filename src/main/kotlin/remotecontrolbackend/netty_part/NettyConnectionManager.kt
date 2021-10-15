@@ -1,6 +1,7 @@
 package remotecontrolbackend.netty_part
 
 import DaggerMainComponent
+import PORT_LITERAL
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.*
 import io.netty.channel.nio.NioEventLoopGroup
@@ -15,6 +16,7 @@ import remotecontrolbackend.PORT
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
+import remotecontrolbackend.netty_part.command_handler_part.handler.AbstractCommandHandler
 import remotecontrolbackend.netty_part.request_handler_part.AbstractRequestHandler
 import javax.inject.Inject
 import javax.inject.Named
@@ -23,7 +25,7 @@ import javax.inject.Named
 @NettyScope
 class NettyConnectionManager(
     val nettySubComponentBuilder: NettySubComponent.NettySubComponentBuilder,
-    @Named("port") val port: Int
+    @Named(PORT_LITERAL) val port: Int
 ) {
     init {
         nettySubComponentBuilder.buildNettySubcomponent().inject(this)
@@ -32,6 +34,7 @@ class NettyConnectionManager(
     val bossGroup = NioEventLoopGroup()
     val workerGroup = NioEventLoopGroup()
     val bootStrap = ServerBootstrap()
+    var nettyJob:Job?=null
 
 
     @Inject
@@ -40,8 +43,12 @@ class NettyConnectionManager(
     @Inject
     lateinit var requestHandler: AbstractRequestHandler
 
+    @Inject
+    lateinit var commandHandler: AbstractCommandHandler
 
-    suspend fun launchNetty() {
+//todo переделать в контекмт-ааксептинг
+    fun launchNetty(coroutineScope: CoroutineScope) {
+   nettyJob=coroutineScope.launch(){
         println("Starting Netty")
         try {
             bootStrap.group(bossGroup, workerGroup)
@@ -66,6 +73,7 @@ class NettyConnectionManager(
                                     },
                                     authHandler,
                                     requestHandler,
+                                    commandHandler
 
 
                                     )
@@ -82,10 +90,12 @@ class NettyConnectionManager(
 
         }
     }
+    }
     suspend fun stopNetty(){
-
+        nettyJob?.cancel()
         workerGroup.shutdownGracefully()
         bossGroup.shutdownGracefully()
+
     }
 }
 

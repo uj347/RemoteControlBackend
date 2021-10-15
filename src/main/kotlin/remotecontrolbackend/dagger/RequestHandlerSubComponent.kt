@@ -3,7 +3,7 @@ package remotecontrolbackend.dagger
 import dagger.Component
 import dagger.Subcomponent
 import javax.inject.Scope
-
+@RhScope
 @Subcomponent
 interface RequestHandlerSubComponent {
 

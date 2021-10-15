@@ -1,0 +1,299 @@
+package remotecontrolbackend.command_invoker_part.command_repo
+
+
+import INVOKER_DIR_LITERAL
+import com.squareup.moshi.Moshi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okio.*
+import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
+import remotecontrolbackend.command_invoker_part.command_hierarchy.MockCommand
+import remotecontrolbackend.dagger.ComInvScope
+import remotecontrolbackend.dagger.CommandInvokerSubcomponent
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.HashMap
+import javax.inject.Inject
+import javax.inject.Named
+import kotlin.io.path.*
+import kotlin.io.use
+
+//todo Вынести в субкомпонент команд инвокера
+@ComInvScope
+class CommandRepo
+@Inject
+constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSubcomponent: CommandInvokerSubcomponent) {
+
+    companion object {
+        const val REPODIR = "command_repo"
+        const val POINTER_MAP_FILE_NAME = "pointer_map.json"
+        const val SERIALIZED_COMMANDS_DIR = "serialized_commands"
+    }
+
+    @Inject
+    lateinit var moshi: Moshi
+
+    //Json запарсенный файл с пойнтерами (Map <Reference, Path>)
+    //Из Path - вылавливаем команду и возвращаем ее инвокеру
+    var pointerMap: MutableMap<CommandReference, Path>? = null
+     val repoDirectory: Path = workPath.resolve("command_repo")
+     val serializedCommandsDir = repoDirectory.resolve(SERIALIZED_COMMANDS_DIR)
+     val pointerMapPath = repoDirectory.resolve(POINTER_MAP_FILE_NAME)
+    var isInitialized: Boolean = false
+
+    //Чек лист
+    private var checkIsRepoDirectoryCreated = false
+    private var checkCommandsDirectoryCreated = false
+    private var checkIsPointerMapFileExists = false
+    private var checkIsPointerMapFileValid = false
+
+
+    //TODO
+    suspend fun initialize() {
+        if (isInitialized) {
+            return
+        }
+        runCheckList()
+       //Идем по иерархии чек листа
+        withContext(Dispatchers.IO){
+            when (checkIsRepoDirectoryCreated) {
+                false -> serializedCommandsDir.createDirectories()
+                true -> {
+                    if (!checkCommandsDirectoryCreated) {
+                        serializedCommandsDir.createDirectory()
+                    }
+
+                    if (checkIsPointerMapFileExists) {
+                        when (checkIsPointerMapFileValid) {
+                            true -> {
+                                val pointerMapPathSource = pointerMapPath.getBufferedSource()
+                                pointerMap = deserializePointerMap()
+                            }
+                            false -> {
+                                pointerMap = HashMap<CommandReference, Path>().toMutableMap()
+                            }
+                        }
+                    }else{
+                        pointerMap = HashMap<CommandReference, Path>().toMutableMap()
+                    }
+                }
+            }
+        }
+        validateRepo()
+       isInitialized=true
+    }
+
+    //TODO
+    /** Добавить команду в рантайм пойнтермапу и пихнуть сериализованную команду в папку Коммандс*/
+    suspend fun addToRepo(command: Command): Boolean {
+        if (!isInitialized) {
+            return false
+        }
+        val newCommandPath = serializedCommandsDir.resolve(generateCommandFileName(command))
+        val reference = command.createReference()
+        kotlin.runCatching {
+
+            val commAdapter = moshi.adapter(Command::class.java)
+            withContext(Dispatchers.IO) {
+                val commandSink = newCommandPath.getBufferedSink().writeAndFlushJson(commAdapter, command)
+            }
+            pointerMap?.put(reference, newCommandPath) ?: return false
+            return true
+        }
+            .onFailure {
+                println("Exception occurred when adding new command: $it")
+                return false
+            }
+
+
+        return false
+    }
+
+    //TODO Check +-
+    /**Получить Path на комманду из рантайм пойнтермапы и десериализовать команду */
+    suspend fun getCommand(reference: CommandReference): Command? {
+        if (!isInitialized) {
+            return null
+        }
+        val commPath = pointerMap?.get(reference) ?: return null
+        val result: Command? = withContext<Command?>(Dispatchers.IO) {
+            kotlin.runCatching {
+                commPath.getBufferedSource().use {
+                    commandInvokerSubcomponent.getMoshi().adapter(Command::class.java).fromJson(it)
+                }
+            }.getOrElse {
+                println("Exception occurred in getting Command: $it")
+                return@getOrElse null
+            }
+        }
+        return result
+    }
+
+
+    /**Удалить комманду из рантайм-Пойнтермапы, валидейт сделает все остальное в свое время*/
+    suspend fun removeCommand(reference: CommandReference): Boolean {
+        if (pointerMap?.contains(reference) ?: return false) {
+            pointerMap?.remove(reference) ?: return false
+            return true
+        }
+        return false
+    }
+
+
+    /** ЮТИЛИТИ Сериализовать содержимое рантайм ПоинтерМапы в Джейсон, полностью переписав ее*/
+    suspend fun saveChanges(): Boolean {
+        if (!isInitialized) {
+            return false
+        }
+        return withContext(Dispatchers.IO) {
+            val mapAdapter = commandInvokerSubcomponent.getPointerMapAdapter()
+            kotlin.runCatching {
+                val mapSink = pointerMapPath.getBufferedSink()
+                mapSink.writeAndFlushJson(mapAdapter, pointerMap)
+                return@runCatching true
+            }.getOrElse {
+                println("Exception occurred in saving RepoChanges: $it")
+                return@getOrElse false
+            }
+        }
+    }
+
+
+    /** ЮТИЛИТИ  Сравнить содержимое пойнтер-мэп и списка комманд, если есть команды не указанные в поинтермапе- удалить их */
+    suspend fun validateRepo(): Boolean {
+        if (!isInitialized) {
+            return false
+        }
+        val pathsFromPointerMap = pointerMap?.values ?: return false
+
+        return withContext(Dispatchers.IO) {
+            kotlin.runCatching {
+                Files.newDirectoryStream(serializedCommandsDir)
+                    .forEach {
+                        if (!pathsFromPointerMap.contains(it)) {
+                            it.deleteExisting()
+                        }
+                    }
+                return@runCatching true
+
+
+            }.getOrElse {
+                println("Error Occurred in validation process: $it")
+                return@getOrElse false
+            }
+        }
+
+    }
+
+
+    /** ЮТИЛИТИ Сгенерить какое нибуудь уникальное имя для комманды */
+    suspend fun generateCommandFileName(command: Command): String {
+        val sb: StringBuffer = StringBuffer()
+        return LocalDateTime.now().let {
+            (it.format(DateTimeFormatter.ISO_LOCAL_DATE) +
+                    "_" +
+                    it.format(DateTimeFormatter.ISO_TIME) +
+                    "_" +
+                    command::class.simpleName +
+                    ".json").replace(":", "!")
+        }
+
+    }
+
+
+    /**ЮТИЛИТИ выгрузить из корневой папки фал и десериализовать его, кинуть Null если его там нет*/
+    suspend fun deserializePointerMap(): MutableMap<CommandReference, Path>? {
+
+        return withContext(Dispatchers.IO) {
+            kotlin.runCatching {
+                pointerMapPath.getBufferedSource().let {
+                    commandInvokerSubcomponent.getPointerMapAdapter().fromJson(it)
+                }
+            }.getOrElse {
+                println("Exception occured in deserialization of pointerMap $it")
+                return@getOrElse null
+            }
+        } as MutableMap<CommandReference, Path>?
+    }
+
+
+
+
+    /** ЮТИЛ Пройтись по чек листу и выставить все флаги в соответсвии*/
+    private suspend fun runCheckList() {
+        checkIsRepoDirectoryCreated = repoDirectory.exists()
+        checkCommandsDirectoryCreated = serializedCommandsDir.exists()
+        //Проверить сущестует ли файл пойнтермапы
+        checkIsPointerMapFileExists = pointerMapPath.exists().also {
+            //Пропихнуть этот булл сюда и на его основе решить стоит ли попытаться десериализовать мапу для проверки ее валидности
+            if (it) {
+                withContext(Dispatchers.IO){
+                    kotlin.runCatching {
+                        val pointerMapPathSource = pointerMapPath.getBufferedSource()
+                        commandInvokerSubcomponent.getPointerMapAdapter().fromJson(pointerMapPathSource)
+                        checkIsPointerMapFileValid = true
+                    }.onFailure { checkIsPointerMapFileValid = false }
+                }
+
+            } else {
+                checkIsPointerMapFileValid = false
+            }
+        }
+//         checkIsRepoDirectoryCreated = false
+//    private var checkCommandsDirectoryCreated = false
+//    private var checkIsPointerMapFileExists = false
+//    private var checkIsPointerMapFileValid = false
+        println("checklist:\n"+
+               "checkIsRepoDirectoryCreated: $checkIsRepoDirectoryCreated\n" +
+                "checkCommandsDirectoryCreated: $checkCommandsDirectoryCreated\n" +
+                "checkIsPointerMapFileExists: $checkIsPointerMapFileExists\n" +
+                "checkIsPointerMapFileValid: $checkIsPointerMapFileValid")
+    }
+
+
+    //TODO TestFiller
+    /**ЮТИЛ моково инициализирует  репо */
+    suspend fun mockInitialize() {
+        if (!isInitialized) {
+
+            val mockCommandPath = serializedCommandsDir.resolve("mock_c.json")
+
+            val testRef = CommandReference("cocoMand", "testRef")
+            //TODO Mock realization
+            repoDirectory.let {
+                if (!it.exists()) {
+                    it.createDirectory()
+                }
+            }
+            serializedCommandsDir.let {
+                if (!it.exists()) {
+                    it.createDirectory()
+                }
+
+
+                val testPointMap = mutableMapOf<CommandReference, Path>(
+                    testRef to mockCommandPath
+                )
+                mockCommandPath.sink(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).buffer().let {
+                    moshi.adapter(Command::class.java).toJson(it, MockCommand())
+                    it.flush()
+                }
+                val testSink =
+                    pointerMapPath.sink(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).buffer()
+                commandInvokerSubcomponent.getPointerMapAdapter().toJson(testSink, testPointMap)
+                testSink.flush()
+                pointerMap =
+                    commandInvokerSubcomponent.getPointerMapAdapter().fromJson(pointerMapPath.source().buffer())
+                        ?.toMutableMap()
+            }
+
+            isInitialized = true
+        }
+
+    }
+
+
+}

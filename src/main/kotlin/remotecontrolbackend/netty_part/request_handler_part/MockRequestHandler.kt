@@ -5,23 +5,20 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import remotecontrolbackend.dagger.RequestHandlerSubComponent
 import remotecontrolbackend.dagger.RhScope
+import remotecontrolbackend.command_invoker_part.command_hierarchy.MockCommand
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
-import javax.inject.Inject
+
 @RhScope
 class MockRequestHandler (rhBuilder: RequestHandlerSubComponent.RhBuilder):AbstractRequestHandler(rhBuilder) {
     init{
-        println("Mock Request handler instantiated")}
-
-
-
-    override fun acceptInboundMessage(msg: Any?): Boolean {
-     return true
+        println("Mock Request handler instantiated")
     }
+
 
     override fun channelRead0(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
 
-       //TODO MEssage and Content
+
         ctx?.let{
             println("Request handler recieved msg: $msg")
             val content=ByteBufUtil.encodeString(ctx.alloc(), CharBuffer.wrap("Vualya blya"),StandardCharsets.US_ASCII)
@@ -39,6 +36,7 @@ class MockRequestHandler (rhBuilder: RequestHandlerSubComponent.RhBuilder):Abstr
             }
             println("Writing/flushing: $fullResponse")
             ctx.writeAndFlush(fullResponse)
+            ctx.fireChannelRead(MockCommand())
         }
     }
 
