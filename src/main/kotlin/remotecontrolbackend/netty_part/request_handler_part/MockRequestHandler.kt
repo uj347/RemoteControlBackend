@@ -5,7 +5,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import remotecontrolbackend.dagger.RequestHandlerSubComponent
 import remotecontrolbackend.dagger.RhScope
-import remotecontrolbackend.command_invoker_part.command_hierarchy.MockCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 

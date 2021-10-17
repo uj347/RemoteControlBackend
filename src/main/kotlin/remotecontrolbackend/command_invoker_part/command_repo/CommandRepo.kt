@@ -1,13 +1,14 @@
 package remotecontrolbackend.command_invoker_part.command_repo
 
-
 import INVOKER_DIR_LITERAL
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.*
 import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
-import remotecontrolbackend.command_invoker_part.command_hierarchy.MockCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.SERIALIZED_COMMANDS_DIR
+import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import remotecontrolbackend.dagger.ComInvScope
 import remotecontrolbackend.dagger.CommandInvokerSubcomponent
 import java.nio.file.Files
@@ -20,17 +21,18 @@ import javax.inject.Inject
 import javax.inject.Named
 import kotlin.io.path.*
 import kotlin.io.use
+import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 
 //todo Вынести в субкомпонент команд инвокера
 @ComInvScope
 class CommandRepo
 @Inject
-constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSubcomponent: CommandInvokerSubcomponent) {
+constructor(@Named(INVOKER_DIR_LITERAL)
+            val workPath: Path,
+            val commandInvokerSubcomponent: CommandInvokerSubcomponent) {
 
     companion object {
-        const val REPODIR = "command_repo"
-        const val POINTER_MAP_FILE_NAME = "pointer_map.json"
-        const val SERIALIZED_COMMANDS_DIR = "serialized_commands"
+
     }
 
     @Inject
@@ -38,15 +40,18 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
 
     //Json запарсенный файл с пойнтерами (Map <Reference, Path>)
     //Из Path - вылавливаем команду и возвращаем ее инвокеру
+    //TODO Переделать в иммьютабл котторый забэкан этим мапом
     var pointerMap: MutableMap<CommandReference, Path>? = null
      val repoDirectory: Path = workPath.resolve("command_repo")
      val serializedCommandsDir = repoDirectory.resolve(SERIALIZED_COMMANDS_DIR)
+    val compiledCommandsDir= repoDirectory.resolve(COMPILED_COMMANDS_DIR)
      val pointerMapPath = repoDirectory.resolve(POINTER_MAP_FILE_NAME)
     var isInitialized: Boolean = false
 
     //Чек лист
     private var checkIsRepoDirectoryCreated = false
-    private var checkCommandsDirectoryCreated = false
+    private var checkIsCommandsDirectoryCreated = false
+    private var checkIsCompiledCommandsDirCreated=false
     private var checkIsPointerMapFileExists = false
     private var checkIsPointerMapFileValid = false
 
@@ -60,10 +65,16 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
        //Идем по иерархии чек листа
         withContext(Dispatchers.IO){
             when (checkIsRepoDirectoryCreated) {
-                false -> serializedCommandsDir.createDirectories()
+                false -> {
+                    compiledCommandsDir.createDirectories()
+                    serializedCommandsDir.createDirectories()
+                }
                 true -> {
-                    if (!checkCommandsDirectoryCreated) {
-                        serializedCommandsDir.createDirectory()
+                    if (!checkIsCommandsDirectoryCreated) {
+                        serializedCommandsDir.createDirectories()
+                    }
+                    if(!checkIsCompiledCommandsDirCreated){
+                        compiledCommandsDir.createDirectories()
                     }
 
                     if (checkIsPointerMapFileExists) {
@@ -88,7 +99,8 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
 
     //TODO
     /** Добавить команду в рантайм пойнтермапу и пихнуть сериализованную команду в папку Коммандс*/
-    suspend fun addToRepo(command: Command): Boolean {
+
+    suspend fun addToRepo(command: SerializableCommand): Boolean {
         if (!isInitialized) {
             return false
         }
@@ -96,7 +108,7 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
         val reference = command.createReference()
         kotlin.runCatching {
 
-            val commAdapter = moshi.adapter(Command::class.java)
+            val commAdapter = moshi.adapter(SerializableCommand::class.java)
             withContext(Dispatchers.IO) {
                 val commandSink = newCommandPath.getBufferedSink().writeAndFlushJson(commAdapter, command)
             }
@@ -114,15 +126,15 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
 
     //TODO Check +-
     /**Получить Path на комманду из рантайм пойнтермапы и десериализовать команду */
-    suspend fun getCommand(reference: CommandReference): Command? {
+    suspend fun getCommand(reference: CommandReference): SerializableCommand? {
         if (!isInitialized) {
             return null
         }
         val commPath = pointerMap?.get(reference) ?: return null
-        val result: Command? = withContext<Command?>(Dispatchers.IO) {
+        val result: SerializableCommand? = withContext<SerializableCommand?>(Dispatchers.IO) {
             kotlin.runCatching {
                 commPath.getBufferedSource().use {
-                    commandInvokerSubcomponent.getMoshi().adapter(Command::class.java).fromJson(it)
+                      commandInvokerSubcomponent.getMoshi().adapter(SerializableCommand::class.java).fromJson(it)
                 }
             }.getOrElse {
                 println("Exception occurred in getting Command: $it")
@@ -190,7 +202,7 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
 
 
     /** ЮТИЛИТИ Сгенерить какое нибуудь уникальное имя для комманды */
-    suspend fun generateCommandFileName(command: Command): String {
+    suspend fun generateCommandFileName(command: SerializableCommand): String {
         val sb: StringBuffer = StringBuffer()
         return LocalDateTime.now().let {
             (it.format(DateTimeFormatter.ISO_LOCAL_DATE) +
@@ -225,7 +237,8 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
     /** ЮТИЛ Пройтись по чек листу и выставить все флаги в соответсвии*/
     private suspend fun runCheckList() {
         checkIsRepoDirectoryCreated = repoDirectory.exists()
-        checkCommandsDirectoryCreated = serializedCommandsDir.exists()
+        checkIsCommandsDirectoryCreated = serializedCommandsDir.exists()
+        checkIsCompiledCommandsDirCreated= compiledCommandsDir.exists()
         //Проверить сущестует ли файл пойнтермапы
         checkIsPointerMapFileExists = pointerMapPath.exists().also {
             //Пропихнуть этот булл сюда и на его основе решить стоит ли попытаться десериализовать мапу для проверки ее валидности
@@ -248,7 +261,7 @@ constructor(@Named(INVOKER_DIR_LITERAL) val workPath: Path, val commandInvokerSu
 //    private var checkIsPointerMapFileValid = false
         println("checklist:\n"+
                "checkIsRepoDirectoryCreated: $checkIsRepoDirectoryCreated\n" +
-                "checkCommandsDirectoryCreated: $checkCommandsDirectoryCreated\n" +
+                "checkCommandsDirectoryCreated: $checkIsCommandsDirectoryCreated\n" +
                 "checkIsPointerMapFileExists: $checkIsPointerMapFileExists\n" +
                 "checkIsPointerMapFileValid: $checkIsPointerMapFileValid")
     }

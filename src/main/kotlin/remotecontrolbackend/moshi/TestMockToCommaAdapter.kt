@@ -3,7 +3,7 @@ package remotecontrolbackend.moshi
 import com.squareup.moshi.FromJson
 import com.squareup.moshi.ToJson
 import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
-import remotecontrolbackend.command_invoker_part.command_hierarchy.MockCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 
 class TestMockToCommaAdapter {
 

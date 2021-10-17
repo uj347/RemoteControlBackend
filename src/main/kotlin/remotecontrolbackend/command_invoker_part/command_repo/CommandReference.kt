@@ -1,10 +1,7 @@
 package remotecontrolbackend.command_invoker_part.command_repo
 
 import com.squareup.moshi.JsonClass
-import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
-import remotecontrolbackend.command_invoker_part.command_hierarchy.OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION
-import remotecontrolbackend.command_invoker_part.command_hierarchy.OBLIGATORY_ENTITY_KEY_COMMAND_TYPE
-import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import java.lang.RuntimeException
 
@@ -47,7 +44,7 @@ val commandDescription:String?
 
     //TODO Вытащитьь команду из репо и запусттить
     override suspend fun execute(infoToken: Map<String, Any>) {
-        val commandRepo = (infoToken.get(CommandInvoker.INVOKER_INSTANCE_LITERAL) as CommandInvoker).commandRepo
+        val commandRepo = (infoToken.get(INVOKER_INSTANCE_LITERAL) as CommandInvoker).commandRepo
         commandRepo.getCommand(this)?.execute(infoToken)
             ?: throw RuntimeException("There is no command for reference: $this")
     }

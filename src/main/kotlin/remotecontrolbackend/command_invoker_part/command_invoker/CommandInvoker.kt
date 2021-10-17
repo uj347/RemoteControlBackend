@@ -1,8 +1,8 @@
 package remotecontrolbackend.command_invoker_part.command_invoker
 
-import INVOKER_DIR_LITERAL
+
 import kotlinx.coroutines.*
-import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
+import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
 import remotecontrolbackend.dagger.ComInvScope
 import remotecontrolbackend.dagger.CommandInvokerSubcomponent
@@ -22,17 +22,14 @@ constructor(
     workDirectory: Path,
     commandInvokerBuilder: CommandInvokerSubcomponent.CommandInvokerBuilder
 ) {
-    companion object{
-        const val WORK_DIR_LITERAL="workDir"
-        const val INVOKER_INSTANCE_LITERAL="invokerInstance"
-    }
+
 
     init {
         commandInvokerBuilder.build().inject(this)
     }
 
     val infoToken:Map<String,Any> = mapOf(
-        WORK_DIR_LITERAL to workDirectory,
+        INVOKER_DIR_LITERAL to workDirectory,
         INVOKER_INSTANCE_LITERAL to this
 
     )
@@ -69,8 +66,12 @@ constructor(
                             //Check if invoker still active, if not - put command back
                             if(!invokerIsRunning){
                                 command?.let { postNonFairCommand(command) }
-                            }else
-                            { command?.execute(infoToken) }
+                            }else {
+                                //Check if command RepoChacheable, if so - addTo REPO
+                                command?.let { repoCaching(command) }
+
+                                command?.execute(infoToken)
+                            }
                         }
                     }
                 }
@@ -80,6 +81,17 @@ constructor(
                 return invokerJob
             }
         }
+//TODO Проверить есть ли у класса  аннотация и если есть - добавить в репо
+    private suspend fun repoCaching(command: Command){
+        if(command !is SerializableCommand){
+            return
+        }else{
+            val isRepoCacheable:Boolean=command::class.java.isAnnotationPresent(RepoCacheable::class.java)
+            if(isRepoCacheable){
+                commandRepo.addToRepo(command)
+            }
+        }
+    }
 
 
     private suspend fun getNextCommandFromDeque(): Command?{

@@ -5,8 +5,10 @@ import okio.source
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
-import remotecontrolbackend.command_invoker_part.command_hierarchy.MockCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.POINTER_MAP_FILE_NAME
+import remotecontrolbackend.command_invoker_part.command_hierarchy.REPODIR
+import remotecontrolbackend.command_invoker_part.command_hierarchy.SERIALIZED_COMMANDS_DIR
+import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import remotecontrolbackend.command_invoker_part.command_repo.CommandReference
 import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
@@ -21,10 +23,10 @@ import kotlin.test.assertEquals
 
 class CommandRepoTests {
     lateinit var repo:CommandRepo;
-    val testPath=Paths.get("j:\\testo")
-    val testRepoPath=testPath.resolve(CommandRepo.REPODIR)
-    val testSerializedCommandsDir=testRepoPath.resolve(CommandRepo.SERIALIZED_COMMANDS_DIR)
-    val testPointeMapPath=testRepoPath.resolve(CommandRepo.POINTER_MAP_FILE_NAME)
+    val testPath=Paths.get("c:\\Ujtrash\\testo")
+    val testRepoPath=testPath.resolve(REPODIR)
+    val testSerializedCommandsDir=testRepoPath.resolve(SERIALIZED_COMMANDS_DIR)
+    val testPointeMapPath=testRepoPath.resolve(POINTER_MAP_FILE_NAME)
 
     val testSerializedCommandPath=testSerializedCommandsDir.resolve("testMock.json")
     val testMap = mutableMapOf<CommandReference,Path>(MockCommand().createReference() to testSerializedCommandPath)
@@ -82,7 +84,7 @@ it.flush()}
 
     @Test
     fun getCommandWorks(){
-         var gotCommand: Command?=null
+         var gotCommand: SerializableCommand?=null
         runBlocking{
             val newCommand= MockCommand()
             val newCommandReference=newCommand.createReference()
@@ -107,6 +109,7 @@ it.flush()}
 
         val testSink=commTestPath.sink(StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING).buffer()
         val testSource=commTestPath.source(StandardOpenOption.READ).buffer()
+        println("Serialized test command: ${commandAdapter.toJson(testCommand)}")
         commandAdapter.toJson(testSink,testCommand)
         testSink.flush()
         assert(commTestPath.exists())

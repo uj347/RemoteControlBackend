@@ -1,29 +1,30 @@
-package remotecontrolbackend.command_invoker_part.command_hierarchy
+package remotecontrolbackend.command_invoker_part.command_hierarchy.mocks
 
 
-import com.squareup.moshi.JsonClass
 import kotlinx.coroutines.delay
-import java.nio.file.Files
-import java.nio.file.Path
-//@JsonClass(generateAdapter = true)
+import remotecontrolbackend.command_invoker_part.command_hierarchy.OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION
+import remotecontrolbackend.command_invoker_part.command_hierarchy.OBLIGATORY_ENTITY_KEY_COMMAND_TYPE
+import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 
+//@JsonClass(generateAdapter = true)
+var counter:Int=0
 //TODO Проверить и это тоже
 class MockCommand(entityMap:Map<String,String>): SerializableCommand(entityMap) {
-constructor():this(mapOf(OBLIGATORY_ENTITY_KEY_COMMAND_TYPE to MockCommand.javaClass.canonicalName,
+constructor():this(mapOf(
+    OBLIGATORY_ENTITY_KEY_COMMAND_TYPE to MockCommand::class.java.canonicalName,
 OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION to "MockCommand #$counter"))
 
-    constructor(description:String):this(mapOf(OBLIGATORY_ENTITY_KEY_COMMAND_TYPE to MockCommand.javaClass.canonicalName,
+    constructor(description:String):this(mapOf(
+        OBLIGATORY_ENTITY_KEY_COMMAND_TYPE to MockCommand::class.java.canonicalName,
         OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION to description))
 
     override val description: String?
         get() = entityMap.get(OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION)
 
 
-    companion object{
-
-        @JvmField
-        var counter:Int=0
-    }
+//    companion object {
+//        var counter:Int=0
+//    }
     val comN:Int
     init{
        comN= counter++
