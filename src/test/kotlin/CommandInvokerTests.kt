@@ -4,16 +4,13 @@ import org.junit.Before
 import org.junit.Test
 import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
-import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
 import remotecontrolbackend.command_invoker_part.command_repo.createReference
-import java.nio.file.Files
 import java.nio.file.Paths
-import kotlin.io.path.deleteExisting
 import kotlin.io.path.exists
 
 class CommandInvokerTests {
 
-    val testPath= Paths.get("c:\\Ujtrash\\testo")
+    val testPath= Paths.get("j:\\Ujtrash\\testo")
     val testRepoPath=testPath.resolve(REPODIR)
     val testSerializedCommandsDir=testRepoPath.resolve(SERIALIZED_COMMANDS_DIR)
     val testPointeMapPath=testRepoPath.resolve(POINTER_MAP_FILE_NAME)
@@ -49,7 +46,7 @@ class CommandInvokerTests {
     fun commandInvokerRunsCorrectly(){
         runBlocking{
 
-            val invokerJob=commandInvoker.launchCommandInvoker(CoroutineScope(coroutineContext+Dispatchers.IO))
+            val invokerJob=commandInvoker.launchCommandInvoker()
             assert(invokerJob!!.isActive)
             assert(commandInvoker.invokerIsRunning)
             delay(3300)
@@ -63,7 +60,7 @@ class CommandInvokerTests {
     @Test
     fun checkCommandsExecutedAsExpected(){
         runBlocking{
-            val invokerJob=commandInvoker.launchCommandInvoker(CoroutineScope(coroutineContext+Dispatchers.IO))
+            val invokerJob=commandInvoker.launchCommandInvoker()
             commandInvoker.postFairCommand(object : Command {
                 override suspend fun execute(infoToken: Map<String, Any>) {
                     println("Assigning 1 to testCounter")
@@ -106,7 +103,7 @@ class CommandInvokerTests {
     @Test
     fun checkPutExecutedAsExpected(){
         runBlocking{
-            val invokerJob=commandInvoker.launchCommandInvoker(CoroutineScope(coroutineContext+Dispatchers.IO))
+            val invokerJob=commandInvoker.launchCommandInvoker()
             commandInvoker.postFairCommand(object : Command {
                 override suspend fun execute(infoToken: Map<String, Any>) {
                     testCounter=1
@@ -163,7 +160,7 @@ class CommandInvokerTests {
                 override var description: String?=testDescription+3
             })
 
-            val invokerJob=commandInvoker.launchCommandInvoker(CoroutineScope(coroutineContext+Dispatchers.IO))
+            val invokerJob=commandInvoker.launchCommandInvoker()
 
             delay(10)
             assert(testCounter==3)
@@ -189,7 +186,7 @@ class CommandInvokerTests {
            val compiledFilePath=testCompiledCommandsDir.resolve(batCommand.uniqueFileName)
 
            val invokerJob =
-                commandInvoker.launchCommandInvoker(CoroutineScope(coroutineContext + Dispatchers.IO))
+                commandInvoker.launchCommandInvoker()
                  commandInvoker.putCommand(batCommand)
            println(commandInvoker.workQueue)
 
@@ -201,10 +198,14 @@ class CommandInvokerTests {
 
            //check is command added to repo
                //TODO Подумать что тут можно сделать
-           val commandReturnedFromRepo=commandInvoker.commandRepo.pointerMap?.values?.size
 
-           assert(commandReturnedFromRepo!=null)
-           assert(commandReturnedFromRepo is BatCommand)
+           assert(commandInvoker.commandRepo.isInitialized)
+           val repoPointerMapSize=commandInvoker.commandRepo.pointerMap?.size
+
+           assert(repoPointerMapSize!=null)
+           assert(repoPointerMapSize!! >0)
+           val batCommandReference=batCommand.createReference()
+           assert(commandInvoker.commandRepo.pointerMap!!.contains(batCommandReference))
 
            assert (true)
            commandInvoker.stopCommandInvoker()

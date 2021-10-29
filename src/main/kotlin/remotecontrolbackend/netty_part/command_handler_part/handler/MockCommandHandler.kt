@@ -1,39 +1,65 @@
 package remotecontrolbackend.netty_part.command_handler_part.handler
 
+import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
+import io.netty.handler.codec.http.*
 import kotlinx.coroutines.*
-import remotecontrolbackend.dagger.ChScope
-import remotecontrolbackend.dagger.CommandHandlerSubcomponent
+import okhttp3.MediaType
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
+import java.awt.PageAttributes
+import java.nio.charset.Charset
 import javax.inject.Inject
 
 @ChannelHandler.Sharable
-@ChScope
-class MockCommandHandler (commandHandlerSCBuilder: CommandHandlerSubcomponent.CommHandlerSCBuilder):AbstractCommandHandler(commandHandlerSCBuilder){
-   @Inject
-    lateinit var commandInvoker: CommandInvoker
 
-    val handlerScope:CoroutineScope= CoroutineScope(Dispatchers.IO)
+class MockCommandHandler @Inject constructor(commandInvoker: CommandInvoker):AbstractCommandHandler(commandInvoker){
 
-   init {
-     commandHandlerSCBuilder.build().inject(this)
+    companion object {
+        val PASS_TROUGH_STRING="Command passed trough the command handler"
+       const val LOGGER_NAME="MockCommandHandlerLogger"
+        val _logger= LogManager.getLogger(COMMAND_HANDLER_LOGGER_SUPERCLASS+"."+ MockCommandHandler.LOGGER_NAME)
+    }
 
-   }
+    override val logger: Logger= _logger
+
+
     override fun handlerAdded(ctx: ChannelHandlerContext?) {
-       handlerScope.launch { commandInvoker.launchCommandInvoker(this) }
         super.handlerAdded(ctx)
+        println("MockCommand handler added")
     }
 
-    override fun handlerRemoved(ctx: ChannelHandlerContext?) {
-        handlerScope.cancel()
-        super.handlerRemoved(ctx)
-    }
+    override fun channelRead0(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
+     msg?.let{
+         val isKeepAlive=HttpUtil.isKeepAlive(msg)
 
-    override fun channelRead0(ctx: ChannelHandlerContext?, msg: Command?) {
-       msg?.let{
-           handlerScope.launch {  commandInvoker.postFairCommand(msg)}
-       }
+         println("Command reckognized")
+         ctx?.writeAndFlush(DefaultFullHttpResponse(HttpVersion.HTTP_1_1,HttpResponseStatus.OK)
+             .also { it.headers().add(HttpHeaderNames.CONNECTION,"close")
+
+                 val commandMsg:ByteBuf=ctx.alloc().buffer().also{
+                    it.writeCharSequence(
+                         PASS_TROUGH_STRING,
+                         Charset.forName("UTF-8")
+                     )
+                 }
+                 it.headers().add(HttpHeaderNames.CONTENT_TYPE,HttpHeaderValues.TEXT_PLAIN)
+                 if(isKeepAlive) {
+                     it.headers().add(HttpHeaderNames.CONTENT_LENGTH, commandMsg.readableBytes())
+                 }
+                 it.content().writeBytes(commandMsg)
+
+             })
+         ctx?.fireChannelRead(PASS_TROUGH_STRING)
+//         ctx?.writeAndFlush()
+
+//         if (HttpUtil.getMimeType(msg)!="application/json"){
+//             ctx?.writeAndFlush(DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST))
+//         }
+
+     }
     }
 }

@@ -3,6 +3,8 @@ package remotecontrolbackend.command_invoker_part.command_repo
 import com.squareup.moshi.JsonAdapter
 import okio.*
 import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
+import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
+import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import kotlin.jvm.Throws
@@ -21,6 +23,6 @@ fun Path.getBufferedSource():BufferedSource{
     return this.source().buffer()
 }
 /**Create reference for this command */
-fun Command.createReference():CommandReference{
+fun SerializableCommand.createReference(): CommandReference {
     return CommandReference.createReference(this)
 }

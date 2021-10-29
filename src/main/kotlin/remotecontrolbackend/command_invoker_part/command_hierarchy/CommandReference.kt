@@ -1,36 +1,46 @@
-package remotecontrolbackend.command_invoker_part.command_repo
+package remotecontrolbackend.command_invoker_part.command_hierarchy
 
-import com.squareup.moshi.JsonClass
-import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import java.lang.RuntimeException
 
-@JsonClass(generateAdapter = true)
+
 /**Инстансы нужно создавать только черех ютилити метод createReference */
+
+const val OBLIGATORY_ENTITY_KEY_COMMAND_REFERENT_TYPE="REFERENT_TYPE"
 
 
 class CommandReference constructor(
-     entityMap:Map<String,String>
+    entityMap: Map<String, String>
 ) : Comparable<CommandReference>, SerializableCommand(
     entityMap
 //
 ) {
-    constructor( commandClassName: String,
-                 commandDescription: String? = "EmptyDescription"):this(
-        mapOf(OBLIGATORY_ENTITY_KEY_COMMAND_TYPE to commandClassName,
-    OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION to commandDescription!!)
-                        )
-val commandClassName:String
-get(){
-    return entityMap.get(OBLIGATORY_ENTITY_KEY_COMMAND_TYPE)!!
-}
-val commandDescription:String?
-    get(){
-        return entityMap.get(OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION)
-    }
+    constructor(
+        commandClassName: String,
+        commandDescription: String? = "EmptyDescription"
+    ) : this(
+        mapOf(
+            OBLIGATORY_ENTITY_KEY_COMMAND_SIMPLE_NAME to CommandReference::class.java.simpleName,
+            OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION to commandDescription!!,
+            OBLIGATORY_ENTITY_KEY_COMMAND_REFERENT_TYPE  to commandClassName
+        )
+    )
+
+    init{if (!entityMap.containsKey(OBLIGATORY_ENTITY_KEY_COMMAND_REFERENT_TYPE)) {
+        throw RuntimeException("All references most contain REFERENT TYPE in the entity map")
+    }}
+
+    val commandClassName: String
+        get() {
+            return entityMap.get(OBLIGATORY_ENTITY_KEY_COMMAND_REFERENT_TYPE)!!
+        }
+    val commandDescription: String?
+        get() {
+            return entityMap.get(OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION)
+        }
 
     companion object {
-        fun createReference(command: Command): CommandReference {
+        fun createReference(command: SerializableCommand): CommandReference {
             return CommandReference(command::class.qualifiedName.toString(), command.description)
         }
 

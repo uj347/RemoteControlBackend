@@ -10,7 +10,7 @@ import remotecontrolbackend.command_invoker_part.command_hierarchy.REPODIR
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SERIALIZED_COMMANDS_DIR
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
-import remotecontrolbackend.command_invoker_part.command_repo.CommandReference
+import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
 import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
 import remotecontrolbackend.command_invoker_part.command_repo.createReference
 import remotecontrolbackend.command_invoker_part.command_repo.getBufferedSink
@@ -23,7 +23,7 @@ import kotlin.test.assertEquals
 
 class CommandRepoTests {
     lateinit var repo:CommandRepo;
-    val testPath=Paths.get("c:\\Ujtrash\\testo")
+    val testPath=Paths.get("j:\\Ujtrash\\testo")
     val testRepoPath=testPath.resolve(REPODIR)
     val testSerializedCommandsDir=testRepoPath.resolve(SERIALIZED_COMMANDS_DIR)
     val testPointeMapPath=testRepoPath.resolve(POINTER_MAP_FILE_NAME)

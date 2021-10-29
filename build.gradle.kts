@@ -1,5 +1,6 @@
 
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.js.inline.clean.removeDuplicateImports
 import org.jetbrains.kotlin.kapt3.base.Kapt.kapt
 
 
@@ -28,12 +29,32 @@ dependencies {
     kapt ("com.google.dagger:dagger-compiler:2.39.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.5.31")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.5.31")
+    implementation("org.slf4j:slf4j-api:1.7.32")
+    implementation("commons-io:commons-io:2.9.0")
+    implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.6.1")
+    implementation("org.apache.logging.log4j:log4j-core:2.6.1")
+
 
 }
 
 tasks.test {
     useJUnit()
 }
+
+
+tasks.processResources {
+    duplicatesStrategy=org.gradle.api.file.DuplicatesStrategy.INCLUDE
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDir ("/src/main/resources")
+        }
+    }
+}
+
+
 
 tasks.withType<KotlinCompile>() {
     kotlinOptions.jvmTarget = "1.8"

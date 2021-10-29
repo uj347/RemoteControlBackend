@@ -3,15 +3,15 @@ package remotecontrolbackend.netty_part.auth_part
 import io.netty.channel.ChannelHandler
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.*
-import remotecontrolbackend.AuthComponent
+import remotecontrolbackend.dagger.NettyScope
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.*
 import javax.inject.Inject
 
-const val AUTH = "Authorization"
 @ChannelHandler.Sharable
-abstract class AbstractAuthHandler (authComponent: AuthComponent.AuthBuilder): SimpleChannelInboundHandler<FullHttpRequest>()
+@NettyScope
+abstract class AbstractAuthHandler (): SimpleChannelInboundHandler<FullHttpRequest>()
 
 
 fun String.base64ToAscii(): String {

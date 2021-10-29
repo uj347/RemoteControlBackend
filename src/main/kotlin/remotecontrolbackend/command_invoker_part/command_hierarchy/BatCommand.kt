@@ -1,9 +1,7 @@
 package remotecontrolbackend.command_invoker_part.command_hierarchy
 
-import jdk.jfr.Description
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.FileWriter
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -17,7 +15,7 @@ const val OBLIGATORY_ENTITY_KEY_BATCOMMAND_COMMAND_TEXT = "BATCOMMAND_COMMAND_TE
 class BatCommand(entityMap: Map<String, String>) : CompilableCommand(entityMap) {
     constructor(batCommandText: String, description: String) : this(
         mapOf(
-            OBLIGATORY_ENTITY_KEY_COMMAND_TYPE to BatCommand::class.java.canonicalName,
+            OBLIGATORY_ENTITY_KEY_COMMAND_SIMPLE_NAME to BatCommand::class.java.simpleName,
             OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION to description,
             OBLIGATORY_ENTITY_KEY_COMPILABLECOMMAND_FILE_EXTENTION to ".bat",
             OBLIGATORY_ENTITY_KEY_BATCOMMAND_COMMAND_TEXT to batCommandText,

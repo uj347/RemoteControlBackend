@@ -5,6 +5,9 @@ import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.*
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import remotecontrolbackend.command_invoker_part.COMMAND_REPO_LOGGER_NAME_LITERAL
 import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SERIALIZED_COMMANDS_DIR
@@ -27,43 +30,47 @@ import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 @ComInvScope
 class CommandRepo
 @Inject
-constructor(@Named(INVOKER_DIR_LITERAL)
-            val workPath: Path,
-            val commandInvokerSubcomponent: CommandInvokerSubcomponent) {
-
-    companion object {
-
-    }
+constructor(
+    @Named(INVOKER_DIR_LITERAL)
+    val workPath: Path,
+    val commandInvokerSubcomponent: CommandInvokerSubcomponent
+) {
+    private val logger:Logger
+init {
+    logger=LogManager.getLogger(COMMAND_REPO_LOGGER_NAME_LITERAL)
+}
 
     @Inject
     lateinit var moshi: Moshi
 
     //Json запарсенный файл с пойнтерами (Map <Reference, Path>)
     //Из Path - вылавливаем команду и возвращаем ее инвокеру
-    //TODO Переделать в иммьютабл котторый забэкан этим мапом
-    var pointerMap: MutableMap<CommandReference, Path>? = null
-     val repoDirectory: Path = workPath.resolve("command_repo")
-     val serializedCommandsDir = repoDirectory.resolve(SERIALIZED_COMMANDS_DIR)
-    val compiledCommandsDir= repoDirectory.resolve(COMPILED_COMMANDS_DIR)
-     val pointerMapPath = repoDirectory.resolve(POINTER_MAP_FILE_NAME)
+    private var _pointerMap: MutableMap<CommandReference, Path>? = null
+    val pointerMap: Map<CommandReference, Path>?
+        get() = _pointerMap
+    val repoDirectory: Path = workPath.resolve("command_repo")
+    val serializedCommandsDir = repoDirectory.resolve(SERIALIZED_COMMANDS_DIR)
+    val compiledCommandsDir = repoDirectory.resolve(COMPILED_COMMANDS_DIR)
+    val pointerMapPath = repoDirectory.resolve(POINTER_MAP_FILE_NAME)
     var isInitialized: Boolean = false
 
     //Чек лист
     private var checkIsRepoDirectoryCreated = false
     private var checkIsCommandsDirectoryCreated = false
-    private var checkIsCompiledCommandsDirCreated=false
+    private var checkIsCompiledCommandsDirCreated = false
     private var checkIsPointerMapFileExists = false
     private var checkIsPointerMapFileValid = false
 
 
-    //TODO
+
     suspend fun initialize() {
+        logger.debug("Command repo initialization started")
         if (isInitialized) {
             return
         }
         runCheckList()
-       //Идем по иерархии чек листа
-        withContext(Dispatchers.IO){
+        //Идем по иерархии чек листа
+        withContext(Dispatchers.IO) {
             when (checkIsRepoDirectoryCreated) {
                 false -> {
                     compiledCommandsDir.createDirectories()
@@ -73,7 +80,7 @@ constructor(@Named(INVOKER_DIR_LITERAL)
                     if (!checkIsCommandsDirectoryCreated) {
                         serializedCommandsDir.createDirectories()
                     }
-                    if(!checkIsCompiledCommandsDirCreated){
+                    if (!checkIsCompiledCommandsDirCreated) {
                         compiledCommandsDir.createDirectories()
                     }
 
@@ -81,23 +88,24 @@ constructor(@Named(INVOKER_DIR_LITERAL)
                         when (checkIsPointerMapFileValid) {
                             true -> {
                                 val pointerMapPathSource = pointerMapPath.getBufferedSource()
-                                pointerMap = deserializePointerMap()
+                                _pointerMap = deserializePointerMap()
                             }
                             false -> {
-                                pointerMap = HashMap<CommandReference, Path>().toMutableMap()
+                                _pointerMap = HashMap<CommandReference, Path>().toMutableMap()
                             }
                         }
-                    }else{
-                        pointerMap = HashMap<CommandReference, Path>().toMutableMap()
+                    } else {
+                        _pointerMap = HashMap<CommandReference, Path>().toMutableMap()
                     }
                 }
             }
         }
-        validateRepo()
-       isInitialized=true
+            validateRepo()
+            isInitialized = true
+
     }
 
-    //TODO
+
     /** Добавить команду в рантайм пойнтермапу и пихнуть сериализованную команду в папку Коммандс*/
 
     suspend fun addToRepo(command: SerializableCommand): Boolean {
@@ -112,7 +120,13 @@ constructor(@Named(INVOKER_DIR_LITERAL)
             withContext(Dispatchers.IO) {
                 val commandSink = newCommandPath.getBufferedSink().writeAndFlushJson(commAdapter, command)
             }
-            pointerMap?.put(reference, newCommandPath) ?: return false
+            val deleteOldFile: Boolean = _pointerMap!!.containsKey(reference)
+            var oldPath: Path? = null
+            if (deleteOldFile) {
+                oldPath = _pointerMap!!.get(reference)
+            }
+            _pointerMap?.put(reference, newCommandPath) ?: return false
+            oldPath?.deleteExisting()
             return true
         }
             .onFailure {
@@ -124,17 +138,17 @@ constructor(@Named(INVOKER_DIR_LITERAL)
         return false
     }
 
-    //TODO Check +-
+
     /**Получить Path на комманду из рантайм пойнтермапы и десериализовать команду */
     suspend fun getCommand(reference: CommandReference): SerializableCommand? {
         if (!isInitialized) {
             return null
         }
-        val commPath = pointerMap?.get(reference) ?: return null
+        val commPath = _pointerMap?.get(reference) ?: return null
         val result: SerializableCommand? = withContext<SerializableCommand?>(Dispatchers.IO) {
             kotlin.runCatching {
                 commPath.getBufferedSource().use {
-                      commandInvokerSubcomponent.getMoshi().adapter(SerializableCommand::class.java).fromJson(it)
+                    commandInvokerSubcomponent.getMoshi().adapter(SerializableCommand::class.java).fromJson(it)
                 }
             }.getOrElse {
                 println("Exception occurred in getting Command: $it")
@@ -147,8 +161,8 @@ constructor(@Named(INVOKER_DIR_LITERAL)
 
     /**Удалить комманду из рантайм-Пойнтермапы, валидейт сделает все остальное в свое время*/
     suspend fun removeCommand(reference: CommandReference): Boolean {
-        if (pointerMap?.contains(reference) ?: return false) {
-            pointerMap?.remove(reference) ?: return false
+        if (_pointerMap?.contains(reference) ?: return false) {
+            _pointerMap?.remove(reference) ?: return false
             return true
         }
         return false
@@ -164,7 +178,7 @@ constructor(@Named(INVOKER_DIR_LITERAL)
             val mapAdapter = commandInvokerSubcomponent.getPointerMapAdapter()
             kotlin.runCatching {
                 val mapSink = pointerMapPath.getBufferedSink()
-                mapSink.writeAndFlushJson(mapAdapter, pointerMap)
+                mapSink.writeAndFlushJson(mapAdapter, _pointerMap)
                 return@runCatching true
             }.getOrElse {
                 println("Exception occurred in saving RepoChanges: $it")
@@ -176,15 +190,18 @@ constructor(@Named(INVOKER_DIR_LITERAL)
 
     /** ЮТИЛИТИ  Сравнить содержимое пойнтер-мэп и списка комманд, если есть команды не указанные в поинтермапе- удалить их */
     suspend fun validateRepo(): Boolean {
+        logger.debug("Starting ValidateRepo......")
         if (!isInitialized) {
             return false
         }
-        val pathsFromPointerMap = pointerMap?.values ?: return false
+        val pathsFromPointerMap = _pointerMap?.values ?: return false
+        logger.debug("In validateRepo(): pointerMapContains paths:$pathsFromPointerMap ")
 
         return withContext(Dispatchers.IO) {
             kotlin.runCatching {
                 Files.newDirectoryStream(serializedCommandsDir)
                     .forEach {
+                        logger.debug("In validateRepo(): perfoming cheeck of serialized command file: $it")
                         if (!pathsFromPointerMap.contains(it)) {
                             it.deleteExisting()
                         }
@@ -232,18 +249,16 @@ constructor(@Named(INVOKER_DIR_LITERAL)
     }
 
 
-
-
     /** ЮТИЛ Пройтись по чек листу и выставить все флаги в соответсвии*/
     private suspend fun runCheckList() {
         checkIsRepoDirectoryCreated = repoDirectory.exists()
         checkIsCommandsDirectoryCreated = serializedCommandsDir.exists()
-        checkIsCompiledCommandsDirCreated= compiledCommandsDir.exists()
+        checkIsCompiledCommandsDirCreated = compiledCommandsDir.exists()
         //Проверить сущестует ли файл пойнтермапы
         checkIsPointerMapFileExists = pointerMapPath.exists().also {
             //Пропихнуть этот булл сюда и на его основе решить стоит ли попытаться десериализовать мапу для проверки ее валидности
             if (it) {
-                withContext(Dispatchers.IO){
+                withContext(Dispatchers.IO) {
                     kotlin.runCatching {
                         val pointerMapPathSource = pointerMapPath.getBufferedSource()
                         commandInvokerSubcomponent.getPointerMapAdapter().fromJson(pointerMapPathSource)
@@ -259,15 +274,16 @@ constructor(@Named(INVOKER_DIR_LITERAL)
 //    private var checkCommandsDirectoryCreated = false
 //    private var checkIsPointerMapFileExists = false
 //    private var checkIsPointerMapFileValid = false
-        println("checklist:\n"+
-               "checkIsRepoDirectoryCreated: $checkIsRepoDirectoryCreated\n" +
-                "checkCommandsDirectoryCreated: $checkIsCommandsDirectoryCreated\n" +
-                "checkIsPointerMapFileExists: $checkIsPointerMapFileExists\n" +
-                "checkIsPointerMapFileValid: $checkIsPointerMapFileValid")
+        println(
+            "checklist:\n" +
+                    "checkIsRepoDirectoryCreated: $checkIsRepoDirectoryCreated\n" +
+                    "checkCommandsDirectoryCreated: $checkIsCommandsDirectoryCreated\n" +
+                    "checkIsPointerMapFileExists: $checkIsPointerMapFileExists\n" +
+                    "checkIsPointerMapFileValid: $checkIsPointerMapFileValid"
+        )
     }
 
 
-    //TODO TestFiller
     /**ЮТИЛ моково инициализирует  репо */
     suspend fun mockInitialize() {
         if (!isInitialized) {
@@ -298,7 +314,7 @@ constructor(@Named(INVOKER_DIR_LITERAL)
                     pointerMapPath.sink(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).buffer()
                 commandInvokerSubcomponent.getPointerMapAdapter().toJson(testSink, testPointMap)
                 testSink.flush()
-                pointerMap =
+                _pointerMap =
                     commandInvokerSubcomponent.getPointerMapAdapter().fromJson(pointerMapPath.source().buffer())
                         ?.toMutableMap()
             }

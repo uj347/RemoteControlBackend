@@ -1,39 +1,55 @@
 package remotecontrolbackend
 
+import APP_COROUTINE_CONTEXT_LITERAL
 import DaggerMainComponent
+import MainComponent
 import kotlinx.coroutines.*
 import remotecontrolbackend.dns_sd_part.DnsSdManager
 import remotecontrolbackend.netty_part.NettyConnectionManager
 import java.nio.file.Paths
 import javax.inject.Inject
+import javax.inject.Named
+import javax.inject.Singleton
+import kotlin.coroutines.CoroutineContext
 
 
 const val PORT = 34747
 fun main() {
-    runBlocking {
-        supervisorScope {
-            launch { Main().launch(this) }
-        }
+   runBlocking {
 
-        awaitCancellation()
-    }
+        val launcher=DaggerMainComponent.builder()
+            .setPort(PORT)
+            .setWorkDirectory(Paths.get("J:\\InvokerTest\\Testosteron"))
+            .isTestRun(false)
+            .buildMainComponent()
+            .getLauncher()
+
+       launcher.launch()
+//           Main(mainComponent).launch()
+    awaitCancellation()
+   }
 
 }
+@Singleton
+class MainLauncher @Inject constructor (@Named(APP_COROUTINE_CONTEXT_LITERAL)coroutineContext: CoroutineContext) {
 
-class Main() {
-    init {
-        DaggerMainComponent.builder().setPort(PORT).setWorkDirectory(Paths.get("J:\\InvokerTest\\")).isTestRun(true).buildMainComponent().inject(this)
-    }
 
     @Inject
     lateinit var nettyConnectionManager: NettyConnectionManager
 
     @Inject
     lateinit var dnsSdManager: DnsSdManager
-    fun launch(coroutineScope: CoroutineScope) {
+
+    @Named(APP_COROUTINE_CONTEXT_LITERAL)
+    @Inject
+    lateinit var appCoroutineContext:CoroutineContext
+
+    fun launch() {
 //TODO Это все очень сыро
-        coroutineScope.launch(Dispatchers.IO) { nettyConnectionManager.launchNetty(this) }
-        coroutineScope.launch(Dispatchers.IO) { dnsSdManager.launchDnsSd(this) }
+
+        val appScope= CoroutineScope(appCoroutineContext)
+         nettyConnectionManager.launchNetty()
+        appScope.launch(Dispatchers.IO) { dnsSdManager.launchDnsSd(this) }
 
 
     }

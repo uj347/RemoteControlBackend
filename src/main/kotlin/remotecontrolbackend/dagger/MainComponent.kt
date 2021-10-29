@@ -1,9 +1,12 @@
-import com.squareup.moshi.Moshi
 import dagger.BindsInstance
 import dagger.Component
 import dagger.Module
 import dagger.Provides
-import remotecontrolbackend.Main
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+
+import remotecontrolbackend.MainLauncher
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dagger.CommandInvokerSubcomponent
 
@@ -16,17 +19,24 @@ import remotecontrolbackend.netty_part.NettyConnectionManager
 import java.nio.file.Path
 import javax.inject.Named
 import javax.inject.Singleton
+import kotlin.coroutines.CoroutineContext
 
 const val PORT_LITERAL = "port"
 const val INVOKER_DIR_LITERAL = "invokerDir"
 const val IS_TEST_LITERAL = "isTest"
+const val APP_COROUTINE_CONTEXT_LITERAL="AppCoroutineContext"
 
 @Singleton
 @Component(modules = [MainModule::class, NettySubcomponentModule::class, DnsSdSubcomponentModule::class, CommandInvokerSubcomponentModule::class])
 interface MainComponent {
-    fun inject(mainClass: Main)
+    fun inject(mainClass: MainLauncher)
    fun getCommandInvoker():CommandInvoker
     fun getComandInvokerSubcompBuilder(): CommandInvokerSubcomponent.CommandInvokerBuilder
+    fun getNettySubcomponentBuilder(): NettySubComponent.NettySubComponentBuilder
+    fun getLauncher(): MainLauncher
+
+    @Named(APP_COROUTINE_CONTEXT_LITERAL)
+    fun getAppCoroutineContext(): CoroutineContext
 
     @Component.Builder
     interface MainBuilder {
@@ -41,6 +51,9 @@ interface MainComponent {
         @BindsInstance
         fun isTestRun(@Named(IS_TEST_LITERAL) isTest: Boolean): MainBuilder
 
+
+
+
     }
 
 }
@@ -49,7 +62,12 @@ interface MainComponent {
 @Module
 interface MainModule {
     companion object {
-
+        @Singleton
+        @Named(APP_COROUTINE_CONTEXT_LITERAL)
+        @Provides
+        fun provideAppCoroutineScope(): CoroutineContext {
+            return Dispatchers.Default + SupervisorJob()
+        }
     }
 }
 

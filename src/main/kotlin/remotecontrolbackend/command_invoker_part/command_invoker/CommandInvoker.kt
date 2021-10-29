@@ -2,9 +2,13 @@ package remotecontrolbackend.command_invoker_part.command_invoker
 
 
 import kotlinx.coroutines.*
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import remotecontrolbackend.command_invoker_part.COMMAND_INVOKER_LOGGER_NAME_LITERAL
 import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
 import remotecontrolbackend.dagger.ComInvScope
+import remotecontrolbackend.dagger.CommandInvokerModule.Companion.COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.dagger.CommandInvokerSubcomponent
 import java.nio.file.Path
 import java.util.concurrent.BlockingDeque
@@ -12,20 +16,22 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Named
+import kotlin.coroutines.CoroutineContext
+
 //TODO вынести в компонент комманд инвокера
 
 @ComInvScope
-class CommandInvoker
-
-constructor(
+class CommandInvoker constructor(
     @Named(INVOKER_DIR_LITERAL)
     workDirectory: Path,
     commandInvokerBuilder: CommandInvokerSubcomponent.CommandInvokerBuilder
 ) {
 
-
-    init {
-        commandInvokerBuilder.build().inject(this)
+val commandInvokerSubcomponent:CommandInvokerSubcomponent
+private val logger:Logger
+init {
+       commandInvokerSubcomponent= commandInvokerBuilder.build().also { it.inject(this) }
+    logger=LogManager.getLogger(COMMAND_INVOKER_LOGGER_NAME_LITERAL)
     }
 
     val infoToken:Map<String,Any> = mapOf(
@@ -43,15 +49,17 @@ constructor(
     lateinit var commandRepo: CommandRepo
     var currentCommandJob: Job? = null
     var invokerJob: Job? = null
-    var invokerCoroutineScope:CoroutineScope?=null
+    @Inject
+    @Named(COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL)
+    lateinit var invokerCoroutineContext:CoroutineContext
     var workQueue: BlockingDeque<Command> = LinkedBlockingDeque()
 
 
-    //TODO
-    fun launchCommandInvoker(scope: CoroutineScope):Job? {
-        if (!this.invokerIsRunning) {
 
-            invokerJob = scope.launch (Dispatchers.IO){
+    fun launchCommandInvoker():Job? {
+        if (!this.invokerIsRunning) {
+val invokerScope= CoroutineScope(invokerCoroutineContext)
+            invokerJob = invokerScope.launch (Dispatchers.IO){
                 //Инициализация репо
                 commandRepo.initialize()
                 //getting command from deque
@@ -81,7 +89,7 @@ constructor(
                 return invokerJob
             }
         }
-//TODO Проверить есть ли у класса  аннотация и если есть - добавить в репо
+/**Проверить есть ли у класса  аннотация "RepoCacheable"и если есть - добавить в репо*/
     private suspend fun repoCaching(command: Command){
         if(command !is SerializableCommand){
             return
@@ -120,7 +128,7 @@ constructor(
         return result
         }
     }
-    //TODO
+
     suspend fun stopCommandInvoker() {
         withContext(Dispatchers.IO){
             commandRepo.saveChanges()
@@ -131,7 +139,7 @@ constructor(
 
 
 
-    //TODO
+
     /** Добавляет команду в конец очереди*/
     suspend fun postFairCommand(command: Command) {
    withContext(Dispatchers.IO){
@@ -139,7 +147,7 @@ constructor(
    }
     }
 
-    //TODO
+
     /** Пропихивает команду первой в очередь*/
     suspend fun postNonFairCommand(command: Command) {
         withContext(Dispatchers.IO){
@@ -155,7 +163,7 @@ constructor(
         }
     }
 
-    //TODO
+
     suspend fun clearCommandQueue(){
         withContext(Dispatchers.IO){
             workQueue.clear()

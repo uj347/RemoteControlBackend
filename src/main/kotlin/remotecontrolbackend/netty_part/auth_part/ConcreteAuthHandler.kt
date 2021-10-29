@@ -3,23 +3,20 @@ package remotecontrolbackend.netty_part.auth_part
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import remotecontrolbackend.UserRepo
-import remotecontrolbackend.AuthComponent
-import remotecontrolbackend.AuthScope
+import remotecontrolbackend.dagger.NettyScope
 import javax.inject.Inject
 
 
 
-@AuthScope
-class ConcreteAuthHandler  (authComponentBuilder: AuthComponent.AuthBuilder) : AbstractAuthHandler(authComponentBuilder) {
-   init {
-       authComponentBuilder.build().inject(this)
-   }
+@NettyScope
+class ConcreteAuthHandler  @Inject constructor() : AbstractAuthHandler() {
+
     @Inject
     lateinit var userRepo: UserRepo
     override fun channelRead0(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
         ctx?.let {
             if (msg != null) {
-                val authHeaderContents = msg.headers().get(AUTH)
+                val authHeaderContents = msg.headers().get(HttpHeaderNames.AUTHORIZATION)
                 when (authHeaderContents) {
                     null -> {
                         println("Sending unAuthorizedResponse because of noAuthHeader in request")
