@@ -4,6 +4,7 @@ import APP_COROUTINE_CONTEXT_LITERAL
 import DaggerMainComponent
 import MainComponent
 import kotlinx.coroutines.*
+import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dns_sd_part.DnsSdManager
 import remotecontrolbackend.netty_part.NettyConnectionManager
 import java.nio.file.Paths
@@ -32,7 +33,8 @@ fun main() {
 }
 @Singleton
 class MainLauncher @Inject constructor (@Named(APP_COROUTINE_CONTEXT_LITERAL)coroutineContext: CoroutineContext) {
-
+@Inject
+lateinit var commandInvoker: CommandInvoker
 
     @Inject
     lateinit var nettyConnectionManager: NettyConnectionManager
@@ -49,6 +51,7 @@ class MainLauncher @Inject constructor (@Named(APP_COROUTINE_CONTEXT_LITERAL)cor
 
         val appScope= CoroutineScope(appCoroutineContext)
          nettyConnectionManager.launchNetty()
+        commandInvoker.launchCommandInvoker()
         appScope.launch(Dispatchers.IO) { dnsSdManager.launchDnsSd(this) }
 
 

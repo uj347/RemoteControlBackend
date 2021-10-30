@@ -11,11 +11,11 @@
             <AppenderRef ref="console" />
         </Root>
 
-        <Logger name="CommandHandlerSuperLogger" level="DEBUG" additivity="false" >
+        <Logger name="remotecontrolbackend.netty_part.command_handler_part" level="DEBUG" additivity="false" >
                 <AppenderRef ref="console" />
         </Logger>
 
-        <Logger name="PARENT_COMMAND_INVOKER_LOGGER" level="DEBUG" additivity="false" >
+        <Logger name="remotecontrolbackend.command_invoker_part" level="DEBUG" additivity="false" >
             <AppenderRef ref="console" />
         </Logger>
 

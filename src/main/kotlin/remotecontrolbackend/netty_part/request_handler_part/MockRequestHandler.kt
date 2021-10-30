@@ -6,7 +6,7 @@ import io.netty.handler.codec.http.*
 
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.dagger.NettyScope
-import remotecontrolbackend.netty_part.command_handler_part.handler.AbstractCommandHandler
+import remotecontrolbackend.netty_part.command_handler_part.AbstractCommandHandler
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 import javax.inject.Inject

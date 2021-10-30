@@ -14,16 +14,15 @@ import io.netty.handler.logging.LoggingHandler
 import io.netty.util.internal.logging.InternalLoggerFactory
 import io.netty.util.internal.logging.Log4J2LoggerFactory
 import kotlinx.coroutines.*
+import org.apache.logging.log4j.LogManager
 import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import remotecontrolbackend.PORT
 import remotecontrolbackend.dagger.NettyModule.Companion.NETTY_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
-import remotecontrolbackend.netty_part.command_handler_part.handler.AbstractCommandHandler
+import remotecontrolbackend.netty_part.command_handler_part.AbstractCommandHandler
 import remotecontrolbackend.netty_part.request_handler_part.AbstractRequestHandler
-import java.util.logging.LogManager
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.coroutines.CoroutineContext
@@ -37,8 +36,9 @@ class NettyConnectionManager(
     init {
         InternalLoggerFactory.setDefaultFactory(Log4J2LoggerFactory.INSTANCE)
         nettySubComponentBuilder.buildNettySubcomponent().inject(this)
+        val logger= LogManager.getLogger()
+
     }
-val logger:Logger=LoggerFactory.getLogger(this::class.java)
     val bossGroup = NioEventLoopGroup()
     val workerGroup = NioEventLoopGroup()
     val bootStrap = ServerBootstrap()

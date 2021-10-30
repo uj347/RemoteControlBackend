@@ -7,7 +7,7 @@ import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import remotecontrolbackend.dagger.NettyScope
-import remotecontrolbackend.netty_part.command_handler_part.handler.AbstractCommandHandler
+import remotecontrolbackend.netty_part.command_handler_part.AbstractCommandHandler
 import remotecontrolbackend.netty_part.send501Response
 
 import javax.inject.Inject
@@ -34,7 +34,6 @@ class ConcreteRequestHandler @Inject constructor() : AbstractRequestHandler() {
             val queryStringDecoder = QueryStringDecoder(it)
 
             when (queryStringDecoder.path().lowercase()) {
-
                 "/command" -> ctx?.handleCommandMsg(commandHandler, msg)
                 else -> ctx.send501Response()
             }

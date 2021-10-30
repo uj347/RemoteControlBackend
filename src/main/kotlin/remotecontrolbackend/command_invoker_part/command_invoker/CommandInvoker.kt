@@ -31,7 +31,7 @@ val commandInvokerSubcomponent:CommandInvokerSubcomponent
 private val logger:Logger
 init {
        commandInvokerSubcomponent= commandInvokerBuilder.build().also { it.inject(this) }
-    logger=LogManager.getLogger(COMMAND_INVOKER_LOGGER_NAME_LITERAL)
+    logger=LogManager.getLogger()
     }
 
     val infoToken:Map<String,Any> = mapOf(
@@ -60,6 +60,7 @@ init {
         if (!this.invokerIsRunning) {
 val invokerScope= CoroutineScope(invokerCoroutineContext)
             invokerJob = invokerScope.launch (Dispatchers.IO){
+                logger.debug("Inititalizing command invoker")
                 //Инициализация репо
                 commandRepo.initialize()
                 //getting command from deque

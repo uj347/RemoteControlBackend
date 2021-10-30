@@ -35,9 +35,9 @@ constructor(
     val workPath: Path,
     val commandInvokerSubcomponent: CommandInvokerSubcomponent
 ) {
-    private val logger:Logger
-init {
-    logger=LogManager.getLogger(COMMAND_REPO_LOGGER_NAME_LITERAL)
+
+companion object {
+    val logger=LogManager.getLogger()
 }
 
     @Inject
