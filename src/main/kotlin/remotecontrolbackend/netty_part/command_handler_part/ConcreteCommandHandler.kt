@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
 import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
+import remotecontrolbackend.command_invoker_part.command_hierarchy.isCacheable
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.netty_part.send200Response
 import remotecontrolbackend.netty_part.send500Response
@@ -44,7 +45,9 @@ class ConcreteCommandHandler
     override fun channelRead0(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
         msg?.let {
             logger.debug("received msg: $msg")
-
+            //Увеличиваем рефкаунт, потому что корутина уходит в паралель и функция возвращается до того, как корутина закончится,
+            // и из-за этого в корутине факапается куча всего ссвязанного с рефкаунтом
+            msg.retain()
             CoroutineScope(commandInvoker.invokerCoroutineContext + Dispatchers.IO).launch {
                 kotlin.runCatching {
                     val receivedCommandsSet: Set<SerializableCommand>? = when (msg.method()) {
@@ -95,6 +98,19 @@ class ConcreteCommandHandler
                             }?:throw RuntimeException("Received null Command Set")
 //TODO
                         }
+                        CommandStrategy.ONLYCACHE ->{
+                            if(it.method().name()!=HttpMethod.PUT.name()&&
+                                it.method().name()!=HttpMethod.POST.name()){
+                                throw RuntimeException("Malformeed request: ONLYCACHE QS Parameter applicble only for POST and PUT")
+                            }
+                           receivedCommandsSet?.let{
+                               receivedCommandsSet
+                                   .filter { it.isCacheable() }
+                                   .forEach{commandInvoker.commandRepo.addToRepo(it)}
+                           }
+
+
+                        }
                     }
                 }.let {
                     it.onSuccess {
@@ -103,7 +119,7 @@ class ConcreteCommandHandler
                         }
                     }
                     it.onFailure {
-                        logger.debug("error occured in deserialization: $it")
+                        logger.error("error occured in deserialization: $it")
                         ctx.send500Response().let {
                             logger.debug("successfully written 500-response")
                         }

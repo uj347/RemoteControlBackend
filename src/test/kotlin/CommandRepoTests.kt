@@ -36,6 +36,8 @@ class CommandRepoTests {
         .setWorkDirectory(testPath)
         .setPort(34444)
         .isTestRun(true)
+        .isSSLEnabled(false)
+        .isAuthEnabled(false)
         .buildMainComponent()
         .getComandInvokerSubcompBuilder()
         .build()

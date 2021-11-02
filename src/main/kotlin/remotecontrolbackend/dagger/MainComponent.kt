@@ -17,14 +17,18 @@ import remotecontrolbackend.dns_sd_part.DnsSdManager
 import remotecontrolbackend.netty_part.NettyConnectionManager
 
 import java.nio.file.Path
+import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.CoroutineContext
 
 const val PORT_LITERAL = "port"
-const val INVOKER_DIR_LITERAL = "invokerDir"
+const val WORK_DIR_LITERAL = "workDir"
 const val IS_TEST_LITERAL = "isTest"
 const val APP_COROUTINE_CONTEXT_LITERAL="AppCoroutineContext"
+const val SSL_ENABLED_LITERAL="SSLEnabled"
+const val AUTH_ENABLED_LITERAL="AuthEnabled"
+
 
 @Singleton
 @Component(modules = [MainModule::class, NettySubcomponentModule::class, DnsSdSubcomponentModule::class, CommandInvokerSubcomponentModule::class])
@@ -46,12 +50,16 @@ interface MainComponent {
         fun setPort(@Named(PORT_LITERAL) portN: Int): MainBuilder
 
         @BindsInstance
-        fun setWorkDirectory(@Named(INVOKER_DIR_LITERAL) invokerDirectory: Path): MainBuilder
+        fun setWorkDirectory(@Named(WORK_DIR_LITERAL) invokerDirectory: Path): MainBuilder
 
         @BindsInstance
         fun isTestRun(@Named(IS_TEST_LITERAL) isTest: Boolean): MainBuilder
 
-
+        @BindsInstance
+        fun isSSLEnabled(@Named(SSL_ENABLED_LITERAL) isSSLEnabled:Boolean):MainBuilder
+        //TODO Сделать возможность выключить АУФ булеан флагом
+        @BindsInstance
+        fun isAuthEnabled(@Named(AUTH_ENABLED_LITERAL) isAuthEnabled:Boolean):MainBuilder
 
 
     }
@@ -68,6 +76,7 @@ interface MainModule {
         fun provideAppCoroutineScope(): CoroutineContext {
             return Dispatchers.Default + SupervisorJob()
         }
+
     }
 }
 
@@ -94,9 +103,11 @@ interface NettySubcomponentModule {
         @Provides
         fun provideNettyManager(
             nettySubComponentBuilder: NettySubComponent.NettySubComponentBuilder,
-            @Named(PORT_LITERAL) portN: Int
+            @Named(PORT_LITERAL) portN: Int,
+            @Named(SSL_ENABLED_LITERAL) isSSLEnabled:Boolean,
+        @Named(AUTH_ENABLED_LITERAL) isAuthEnabled: Boolean
         ): NettyConnectionManager {
-            return NettyConnectionManager(nettySubComponentBuilder, portN)
+            return NettyConnectionManager(nettySubComponentBuilder, portN,isSSLEnabled,isAuthEnabled)
         }
     }
 
@@ -110,7 +121,7 @@ interface CommandInvokerSubcomponentModule {
         @Singleton
         @Provides
         fun provideCommandInvoker(
-            @Named(INVOKER_DIR_LITERAL)
+            @Named(WORK_DIR_LITERAL)
             invokerDirectory: Path,
             commandInvokerSubcomponentBuilder: CommandInvokerSubcomponent.CommandInvokerBuilder
         ): CommandInvoker {

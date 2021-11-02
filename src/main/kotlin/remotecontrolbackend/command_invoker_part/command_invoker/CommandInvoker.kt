@@ -4,7 +4,6 @@ package remotecontrolbackend.command_invoker_part.command_invoker
 import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import remotecontrolbackend.command_invoker_part.COMMAND_INVOKER_LOGGER_NAME_LITERAL
 import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
 import remotecontrolbackend.dagger.ComInvScope
@@ -95,8 +94,7 @@ val invokerScope= CoroutineScope(invokerCoroutineContext)
         if(command !is SerializableCommand){
             return
         }else{
-            val isRepoCacheable:Boolean=command::class.java.isAnnotationPresent(RepoCacheable::class.java)
-            if(isRepoCacheable){
+            if(command.isCacheable()){
                 commandRepo.addToRepo(command)
             }
         }

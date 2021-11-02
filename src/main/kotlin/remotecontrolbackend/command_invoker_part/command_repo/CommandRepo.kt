@@ -1,13 +1,11 @@
 package remotecontrolbackend.command_invoker_part.command_repo
 
-import INVOKER_DIR_LITERAL
+import WORK_DIR_LITERAL
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.*
 import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
-import remotecontrolbackend.command_invoker_part.COMMAND_REPO_LOGGER_NAME_LITERAL
 import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SERIALIZED_COMMANDS_DIR
@@ -19,19 +17,20 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.HashMap
+
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.io.path.*
 import kotlin.io.use
 import remotecontrolbackend.command_invoker_part.command_hierarchy.*
+import java.util.concurrent.ConcurrentHashMap
 
 //todo Вынести в субкомпонент команд инвокера
 @ComInvScope
 class CommandRepo
 @Inject
 constructor(
-    @Named(INVOKER_DIR_LITERAL)
+    @Named(WORK_DIR_LITERAL)
     val workPath: Path,
     val commandInvokerSubcomponent: CommandInvokerSubcomponent
 ) {
@@ -53,6 +52,7 @@ companion object {
     val compiledCommandsDir = repoDirectory.resolve(COMPILED_COMMANDS_DIR)
     val pointerMapPath = repoDirectory.resolve(POINTER_MAP_FILE_NAME)
     var isInitialized: Boolean = false
+    private val pointerMapAdapter=commandInvokerSubcomponent.getPointerMapAdapter()
 
     //Чек лист
     private var checkIsRepoDirectoryCreated = false
@@ -91,11 +91,13 @@ companion object {
                                 _pointerMap = deserializePointerMap()
                             }
                             false -> {
-                                _pointerMap = HashMap<CommandReference, Path>().toMutableMap()
+                                _pointerMap = ConcurrentHashMap <CommandReference, Path>().toMutableMap()
+                                    //HashMap<CommandReference, Path>().toMutableMap()
                             }
                         }
                     } else {
-                        _pointerMap = HashMap<CommandReference, Path>().toMutableMap()
+                        _pointerMap = ConcurrentHashMap <CommandReference, Path>().toMutableMap()
+//                            HashMap<CommandReference, Path>().toMutableMap()
                     }
                 }
             }
@@ -157,6 +159,13 @@ companion object {
         }
         return result
     }
+/** Use with extreme caution, cleans all enries in pointermap*/
+suspend fun cleanRepoPointermap():Boolean{
+    return withContext(Dispatchers.IO){
+        _pointerMap?.clear()?:return@withContext false
+        return@withContext true
+    }
+}
 
 
     /**Удалить комманду из рантайм-Пойнтермапы, валидейт сделает все остальное в свое время*/
@@ -175,10 +184,9 @@ companion object {
             return false
         }
         return withContext(Dispatchers.IO) {
-            val mapAdapter = commandInvokerSubcomponent.getPointerMapAdapter()
             kotlin.runCatching {
                 val mapSink = pointerMapPath.getBufferedSink()
-                mapSink.writeAndFlushJson(mapAdapter, _pointerMap)
+                mapSink.writeAndFlushJson(pointerMapAdapter, _pointerMap)
                 return@runCatching true
             }.getOrElse {
                 println("Exception occurred in saving RepoChanges: $it")
@@ -239,13 +247,13 @@ companion object {
         return withContext(Dispatchers.IO) {
             kotlin.runCatching {
                 pointerMapPath.getBufferedSource().let {
-                    commandInvokerSubcomponent.getPointerMapAdapter().fromJson(it)
+                    ConcurrentHashMap <CommandReference, Path>(pointerMapAdapter.fromJson(it))
                 }
             }.getOrElse {
                 println("Exception occured in deserialization of pointerMap $it")
                 return@getOrElse null
             }
-        } as MutableMap<CommandReference, Path>?
+        }
     }
 
 
@@ -261,7 +269,7 @@ companion object {
                 withContext(Dispatchers.IO) {
                     kotlin.runCatching {
                         val pointerMapPathSource = pointerMapPath.getBufferedSource()
-                        commandInvokerSubcomponent.getPointerMapAdapter().fromJson(pointerMapPathSource)
+                        pointerMapAdapter.fromJson(pointerMapPathSource)
                         checkIsPointerMapFileValid = true
                     }.onFailure { checkIsPointerMapFileValid = false }
                 }
@@ -312,11 +320,10 @@ companion object {
                 }
                 val testSink =
                     pointerMapPath.sink(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).buffer()
-                commandInvokerSubcomponent.getPointerMapAdapter().toJson(testSink, testPointMap)
+                pointerMapAdapter.toJson(testSink, testPointMap)
                 testSink.flush()
-                _pointerMap =
-                    commandInvokerSubcomponent.getPointerMapAdapter().fromJson(pointerMapPath.source().buffer())
-                        ?.toMutableMap()
+                _pointerMap =ConcurrentHashMap<CommandReference,Path>(
+                    pointerMapAdapter.fromJson(pointerMapPath.source().buffer())?.toMutableMap())
             }
 
             isInitialized = true

@@ -3,6 +3,7 @@ package remotecontrolbackend.netty_part.request_handler_part
 import io.netty.buffer.ByteBufUtil
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
+import org.apache.logging.log4j.LogManager
 
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.dagger.NettyScope
@@ -17,6 +18,7 @@ class MockRequestHandler @Inject constructor():AbstractRequestHandler() {
     init{
         println("Mock Request handler instantiated")
     }
+
     @Inject
     lateinit var commandHandler: AbstractCommandHandler
 

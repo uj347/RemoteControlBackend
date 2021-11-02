@@ -1,21 +1,18 @@
 package IntrestingTests
 
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Types
 import io.netty.bootstrap.Bootstrap
-import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.*
 import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.SocketChannel
-import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.http.*
 import io.netty.handler.codec.http.HttpHeaderValues.APPLICATION_JSON
-import io.netty.handler.logging.LoggingHandler
+import io.netty.handler.ssl.SslHandler
 import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
-import remotecontrolbackend.moshi.SerializableCommandToMapAdapter
 import java.net.SocketAddress
-import java.nio.charset.Charset
 import java.nio.file.Paths
 fun main(){
     val testClient=TestClient()
@@ -23,22 +20,31 @@ fun main(){
 }
 class TestClient {
     val batCommand = BatCommand("cmd /c start \"\" ping vk.com", "TESTBATCOMMAND")
-    val comInvSubcomponent=DaggerMainComponent
+
+    val mainComponent=DaggerMainComponent
         .builder()
-        .setWorkDirectory(Paths.get("j:\\testClietnt\\"))
+        .setWorkDirectory(Paths.get("J:\\InvokerTest\\Testosteron"))
         .setPort(34444)
         .isTestRun(true)
+        .isSSLEnabled(true)
+        .isAuthEnabled(false)
         .buildMainComponent()
+
+    val comInvSubcomponent=mainComponent
         .getComandInvokerSubcompBuilder()
         .build()
 
-    val SerializableCommandToMapAdapter=comInvSubcomponent.getMoshi().adapter(SerializableCommand::class.java)
+    val nettyComponent=mainComponent.getNettySubcomponentBuilder().buildNettySubcomponent()
+    val sslContextProvider=nettyComponent.getSSLContextProvider()
+
+    val commandSetAdapter:JsonAdapter<Set<SerializableCommand>> =comInvSubcomponent.getMoshi()
+        .adapter(Types.newParameterizedType(Set::class.java,SerializableCommand::class.java))
 
 
   fun launchTestClient() {
       val groop:NioEventLoopGroup= NioEventLoopGroup()
       val bootStrap=Bootstrap()
-      val serializedBat=SerializableCommandToMapAdapter.toJson(batCommand)
+      val serializedBat=commandSetAdapter.toJson(setOf(batCommand))
       val contentWithSerializableCommand= Unpooled.wrappedBuffer(serializedBat.encodeToByteArray())
       try {
           bootStrap
@@ -48,6 +54,9 @@ class TestClient {
                   object : ChannelInitializer<NioSocketChannel>() {
                       override fun initChannel(ch: NioSocketChannel?) {
                           ch?.let {
+                              it.pipeline().addFirst("SSLHANDLER",
+                              SslHandler(sslContextProvider.clientSslContext.newEngine(it.alloc()))
+                              )
                               it.pipeline().addLast(
                                   object:ChannelOutboundHandlerAdapter(){
                                       override fun write(
