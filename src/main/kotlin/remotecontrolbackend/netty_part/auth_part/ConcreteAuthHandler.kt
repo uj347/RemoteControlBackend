@@ -13,7 +13,7 @@ class ConcreteAuthHandler  @Inject constructor() : AbstractAuthHandler() {
 
     @Inject
     lateinit var userRepo: UserRepo
-    override fun channelRead0(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
+    override fun channelRead0(ctx: ChannelHandlerContext?, msg: HttpRequest?) {
         ctx?.let {
             if (msg != null) {
                 val authHeaderContents = msg.headers().get(HttpHeaderNames.AUTHORIZATION)
@@ -23,7 +23,7 @@ class ConcreteAuthHandler  @Inject constructor() : AbstractAuthHandler() {
                         ctx.writeAndFlush(constructUnAuthorizedRespose())
                     }
                     else -> if (checkAuth(authHeaderContents)) {
-                        msg.retain()
+
                         ctx.fireChannelRead(msg)
                     } else {
                         ctx.writeAndFlush(constructUnAuthorizedRespose())

@@ -33,6 +33,10 @@ dependencies {
     implementation("commons-io:commons-io:2.9.0")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.6.1")
     implementation("org.apache.logging.log4j:log4j-core:2.6.1")
+    implementation("com.squareup.okhttp3:okhttp:4.9.2")
+    implementation("io.github.hakky54:sslcontext-kickstart:7.0.2")
+    implementation("io.github.hakky54:sslcontext-kickstart-for-pem:7.0.2")
+
 
 
 }

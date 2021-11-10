@@ -22,7 +22,7 @@ fun main() {
             .setPort(PORT)
             .setWorkDirectory(Paths.get("J:\\InvokerTest\\Testosteron"))
             .isTestRun(false)
-            .isSSLEnabled(true)
+            .isSSLEnabled(false)
             .isAuthEnabled(false)
             .buildMainComponent()
             .getLauncher()

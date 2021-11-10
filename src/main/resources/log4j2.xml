@@ -3,19 +3,23 @@
     <Appenders>
         <Console name="console" target="SYSTEM_OUT">
             <PatternLayout
-                    pattern="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n" />
+                    pattern="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t]  %c{1} - %msg%n" />
         </Console>
     </Appenders>
     <Loggers>
-        <Root level="INFO" additivity="false">
+        <Root level="DEBUG" additivity="false">
             <AppenderRef ref="console" />
         </Root>
 
-        <Logger name="remotecontrolbackend.netty_part.command_handler_part" level="DEBUG" additivity="false" >
+        <Logger name="remotecontrolbackend.netty_part" level="DEBUG" additivity="false" >
                 <AppenderRef ref="console" />
         </Logger>
 
         <Logger name="remotecontrolbackend.command_invoker_part" level="DEBUG" additivity="false" >
+            <AppenderRef ref="console" />
+        </Logger>
+
+        <Logger name="javax.jmdns" level="error" additivity="false" >
             <AppenderRef ref="console" />
         </Logger>
 

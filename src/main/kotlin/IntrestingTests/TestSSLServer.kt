@@ -8,6 +8,7 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
+import io.netty.handler.codec.http.HttpServerCodec
 import io.netty.handler.codec.string.StringDecoder
 import io.netty.handler.logging.LoggingHandler
 import io.netty.handler.ssl.ClientAuth
@@ -34,13 +35,16 @@ fun main(){
     val sBootstrap:ServerBootstrap= ServerBootstrap()
     val group:NioEventLoopGroup= NioEventLoopGroup()
     sBootstrap.group(group).channel(NioServerSocketChannel::class.java)
-//        .handler(LoggingHandler())
+        .handler(LoggingHandler())
         .childHandler(object:ChannelInitializer<NioSocketChannel>(){
         override fun initChannel(ch: NioSocketChannel?) {
             ch?.pipeline()?.addLast(
                 sslContext.newHandler(ch.alloc()),
                 LoggingHandler(),
+                HttpServerCodec(),
+                LoggingHandler(),
                 StringDecoder(),
+
                 object:SimpleChannelInboundHandler<String>(){
                     override fun channelRegistered(ctx: ChannelHandlerContext?) {
                         println("Connected to: ${ctx?.channel()?.remoteAddress()}")

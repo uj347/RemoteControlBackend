@@ -11,7 +11,7 @@ import javax.inject.Inject
 
 @ChannelHandler.Sharable
 @NettyScope
-abstract class AbstractAuthHandler (): SimpleChannelInboundHandler<FullHttpRequest>()
+abstract class AbstractAuthHandler (): SimpleChannelInboundHandler<HttpRequest>()
 
 
 fun String.base64ToAscii(): String {

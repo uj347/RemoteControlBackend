@@ -1,7 +1,6 @@
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import io.netty.buffer.ByteBuf
-import io.netty.buffer.EmptyByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.codec.http.*
@@ -10,20 +9,16 @@ import kotlinx.coroutines.runBlocking
 import org.apache.commons.io.FileUtils
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
-import remotecontrolbackend.command_invoker_part.command_hierarchy.Command
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
-import remotecontrolbackend.netty_part.command_handler_part.AbstractCommandHandler
-import remotecontrolbackend.netty_part.command_handler_part.CommandStrategy
-import remotecontrolbackend.netty_part.request_handler_part.AbstractRequestHandler
-import java.awt.desktop.OpenURIEvent
+import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
+import remotecontrolbackend.netty_part.full_request_part.command_handler_part.CommandStrategy
+import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.AbstractFullRequestRouter
 import java.lang.reflect.Type
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -45,7 +40,7 @@ class NettyManagerTest {
 
 
     val authHandler: AbstractAuthHandler = nettySubcomponent.getAuthHandler()
-    val requestHandler: AbstractRequestHandler = nettySubcomponent.getRequestHandler()
+    val requestHandler: AbstractFullRequestRouter = nettySubcomponent.getFullRequestRouter()
     val commandHandler: AbstractCommandHandler = nettySubcomponent.getCommandHandler()
     val batCommand = BatCommand("cmd /c start \"\" ping vk.com", "TESTBATCOMMAND")
     val mockCommand = MockCommand("TEST_MOCK_COMMAND")
@@ -112,7 +107,7 @@ class NettyManagerTest {
 
         Thread.sleep(600)
         val testChannel = EmbeddedChannel(commandHandler)
-        val serizalizedBatCommandSet = setOf(batCommand).getByteBuf(moshi)
+        val serializedBatCommandSet = setOf(batCommand).getByteBuf(moshi)
         val serializedMockCommandSet = setOf(mockCommand).getByteBuf(moshi)
         assert(commandRepo.pointerMap!!.isEmpty())
         val testMockCommandRequestWithoutQS = moshi.generateCommandFullRequest(
@@ -125,23 +120,24 @@ class NettyManagerTest {
             HttpMethod.POST,
             null,
             false,
-            serizalizedBatCommandSet
+            serializedBatCommandSet
         )
 
-        println("testCommadRequsetWithoutQS is $testMockCommandRequestWithoutQS")
+        println("testCommadRequestWithoutQS is $testMockCommandRequestWithoutQS")
 
         //testMockCommandRequestWithoutQS.retain()
-        // println("FIRST Current refcout is "+testMockCommandRequestWithoutQS.refCnt())
+        // println("FIRST Current refcount is "+testMockCommandRequestWithoutQS.refCnt())
         testChannel.writeOneInbound(testMockCommandRequestWithoutQS)
         // testMockCommandRequestWithoutQS.retain()
-        //println("SECOND Current refcout is "+testMockCommandRequestWithoutQS.refCnt())
+        //println("SECOND Current refcount is "+testMockCommandRequestWithoutQS.refCnt())
 
         testChannel.writeOneInbound(testMockCommandRequestWithoutQS)
 
         Thread.sleep(600)
         assert((testChannel.readOutbound() as FullHttpResponse).status() == HttpResponseStatus.OK)
         assertEquals(
-            commandRepo.pointerMap!!.size, 1, "failed because pointemap size is " +
+            commandRepo.pointerMap!!.size, 1, "failed because pointer" +
+                    "map size is " +
                     "${commandRepo.pointerMap!!.size}, " +
                     "pointermap:${commandRepo.pointerMap!!.keys}"
         )
@@ -254,6 +250,8 @@ class NettyManagerTest {
             testChannel.writeInbound(fckdCacheOnlyRequest)
             delay(750)
             assertEquals(2,commandRepo.pointerMap!!.size)
+            delay(1000)
+            assertEquals((testChannel.readOutbound() as FullHttpResponse).status(), HttpResponseStatus.OK)
         }
     }
 }

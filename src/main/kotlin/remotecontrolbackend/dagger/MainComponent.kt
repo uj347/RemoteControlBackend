@@ -8,16 +8,14 @@ import kotlinx.coroutines.SupervisorJob
 
 import remotecontrolbackend.MainLauncher
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
-import remotecontrolbackend.dagger.CommandInvokerSubcomponent
+import remotecontrolbackend.dagger.*
 
-import remotecontrolbackend.dagger.DnsSdSubComponent
-import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.dns_sd_part.DnsSdManager
 
 import remotecontrolbackend.netty_part.NettyConnectionManager
+import remotecontrolbackend.robot.RobotManager
 
 import java.nio.file.Path
-import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.CoroutineContext
@@ -31,13 +29,16 @@ const val AUTH_ENABLED_LITERAL="AuthEnabled"
 
 
 @Singleton
-@Component(modules = [MainModule::class, NettySubcomponentModule::class, DnsSdSubcomponentModule::class, CommandInvokerSubcomponentModule::class])
+@Component(modules = [MainModule::class, NettySubcomponentModule::class, DnsSdSubcomponentModule::class,
+    CommandInvokerSubcomponentModule::class,CommandInvokerSubcomponentModule::class,
+RobotManagerSubcomponentModule::class])
 interface MainComponent {
     fun inject(mainClass: MainLauncher)
    fun getCommandInvoker():CommandInvoker
     fun getComandInvokerSubcompBuilder(): CommandInvokerSubcomponent.CommandInvokerBuilder
     fun getNettySubcomponentBuilder(): NettySubComponent.NettySubComponentBuilder
     fun getLauncher(): MainLauncher
+    fun getRobotManager():RobotManager
 
     @Named(APP_COROUTINE_CONTEXT_LITERAL)
     fun getAppCoroutineContext(): CoroutineContext
@@ -126,6 +127,22 @@ interface CommandInvokerSubcomponentModule {
             commandInvokerSubcomponentBuilder: CommandInvokerSubcomponent.CommandInvokerBuilder
         ): CommandInvoker {
            return CommandInvoker(invokerDirectory, commandInvokerSubcomponentBuilder)
+        }
+    }
+
+
+
+}
+
+@Module(subcomponents =[RobotManagerSubcomponent::class])
+interface RobotManagerSubcomponentModule{
+    companion object{
+        @Singleton
+        @Provides
+        fun provideRobotManager(
+            subcomponentBuilder:RobotManagerSubcomponent.RobotManagerBuilder
+        ):RobotManager{
+            return RobotManager(subcomponentBuilder)
         }
     }
 }

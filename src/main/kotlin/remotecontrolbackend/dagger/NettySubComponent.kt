@@ -8,18 +8,24 @@ import dagger.multibindings.IntoMap
 import dagger.multibindings.StringKey
 import kotlinx.coroutines.Dispatchers
 import remotecontrolbackend.UserRepo
-import remotecontrolbackend.dagger.NettyModule.Companion.NETTY_COROUTINE_CONTEXT_LITERAL
+import remotecontrolbackend.dagger.NettyMainModule.Companion.NETTY_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.netty_part.NettyConnectionManager
 import remotecontrolbackend.netty_part.NettySslContextProvider
 import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
 import remotecontrolbackend.netty_part.auth_part.MockAuthHandler
 import remotecontrolbackend.netty_part.auth_part.MockUserRepo
-import remotecontrolbackend.netty_part.command_handler_part.AbstractCommandHandler
-import remotecontrolbackend.netty_part.command_handler_part.ConcreteCommandHandler
-import remotecontrolbackend.netty_part.command_handler_part.MockCommandHandler
-import remotecontrolbackend.netty_part.request_handler_part.AbstractRequestHandler
-import remotecontrolbackend.netty_part.request_handler_part.ConcreteRequestHandler
-import remotecontrolbackend.netty_part.request_handler_part.MockRequestHandler
+import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
+import remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part.AbstractChunkedRequestRouter
+import remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part.ConcreteChunkedRequestRouter
+import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.AbstractRobotHandler
+import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.ConcreteRobotHandler
+import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
+import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
+import remotecontrolbackend.netty_part.full_request_part.command_handler_part.ConcreteCommandHandler
+import remotecontrolbackend.netty_part.full_request_part.command_handler_part.MockCommandHandler
+import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.AbstractFullRequestRouter
+import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.ConcreteFullRequestRouter
+import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.MockFullRequestRouter
 import java.nio.file.Path
 import javax.inject.Named
 import javax.inject.Scope
@@ -28,48 +34,67 @@ import kotlin.coroutines.CoroutineContext
 //TODO
 
 
-
 @NettyScope
-@Subcomponent(modules = [NettyModule::class, NettySSLModule::class])
+@Subcomponent(modules = [NettyMainModule::class, NettySSLModule::class,
+    NettyFullRequestModesModule::class, NettyAuthModule::class,
+    NettyChunkedRequestModesModule::class])
+
 interface NettySubComponent {
-    fun getRequestHandler(): AbstractRequestHandler
+    companion object {
+        const val COMMAND_HANDLER_LITERAL = "COMMAND_HANDLER"
+        const val FULL_REQUEST_ROUTER_LITERAL = "FULL_REQUEST_ROUTER"
+        const val CHUNKED_REQUEST_ROUTER_LITERAL = "CHUNKED_REQUEST_ROUTER"
+        const val CHUNKED_INTERCEPTOR_LITERAL = "CHUNKED_INTERCEPTOR"
+        const val ROBOT_HANDLER_LITERAL = "ROBOT_HANDLER"
+        const val SSL_HANDLER_LITERAL = "SSL_HANDLER"
+        const val AUTH_HANDLER_LITERAL = "AUTH_HANDLER"
+        const val EXCEPTION_CATCHER_LITERAL = "EXCEPTION_CATCHER"
+        const val HTTP_AGGREGATOR_LITERAL = "HTTP_AGGREGATOR"
+        const val HTTP_CODEC_LITERAL = "HTTP_CODEC"
+
+    }
+
+    fun getRobotHandler(): AbstractRobotHandler
+    fun getChunkedRequestRouter(): AbstractChunkedRequestRouter
+    fun getFullRequestRouter(): AbstractFullRequestRouter
     fun getAuthHandler(): AbstractAuthHandler
     fun getCommandHandler(): AbstractCommandHandler
 
     @Named(NETTY_COROUTINE_CONTEXT_LITERAL)
-    fun getNettyCoroutineContext():CoroutineContext
+    fun getNettyCoroutineContext(): CoroutineContext
 
     fun inject(nettyConnectionManager: NettyConnectionManager)
-    fun getSSLContextProvider():NettySslContextProvider
+    fun getSSLContextProvider(): NettySslContextProvider
 
     @Subcomponent.Builder
     interface NettySubComponentBuilder {
         fun buildNettySubcomponent(): NettySubComponent
     }
 }
+
 @Module
-interface NettySSLModule{
+interface NettySSLModule {
 
     @NettyScope
     @Named(SSL_PATHS_MAP_LITERAL)
     @StringKey(SSL_DIRECTORY_LITERAL)
     @IntoMap
     @Binds
-    abstract fun provideSslDirectoryPathIntoMap(@Named(SSL_DIRECTORY_LITERAL) sslDir: Path):Path
+    abstract fun provideSslDirectoryPathIntoMap(@Named(SSL_DIRECTORY_LITERAL) sslDir: Path): Path
 
-    companion object{
-        const val SERVER_SSL_PATH_LITERAL="SERVER_SSL_PATH"
-        const val CLIENT_SSL_PATH_LITERAL="CLIENT_SSL_PATH"
-        const val SSL_DIRECTORY_LITERAL="SSL_DIRECTORY_PATH"
-        const val SSL_CA_CERT_PATH_LITERAL="SSL_CA_CERT_PATH"
-        const val SSL_PATHS_MAP_LITERAL="SSL_MAP"
+    companion object {
+        const val SERVER_SSL_PATH_LITERAL = "SERVER_SSL_PATH"
+        const val CLIENT_SSL_PATH_LITERAL = "CLIENT_SSL_PATH"
+        const val SSL_DIRECTORY_LITERAL = "SSL_DIRECTORY_PATH"
+        const val SSL_CA_CERT_PATH_LITERAL = "SSL_CA_CERT_PATH"
+        const val SSL_PATHS_MAP_LITERAL = "SSL_MAP"
         //TODO Прикруутить проброс пути из мейн компонента
 
 
         @NettyScope
         @Named(SSL_DIRECTORY_LITERAL)
         @Provides
-        fun provideSslDirectoryPath(@Named(WORK_DIR_LITERAL) workDir: Path):Path{
+        fun provideSslDirectoryPath(@Named(WORK_DIR_LITERAL) workDir: Path): Path {
             return workDir.resolve("SSL")
         }
 
@@ -80,8 +105,8 @@ interface NettySSLModule{
         @IntoMap
         fun provideCaCertPath(
             @Named(SSL_DIRECTORY_LITERAL) sslDir: Path
-        ):Path{
-        return sslDir.resolve("CACert.pem")
+        ): Path {
+            return sslDir.resolve("CACert.pem")
 
         }
 
@@ -92,7 +117,7 @@ interface NettySSLModule{
         @IntoMap
         fun provideServerSSLPath(
             @Named(SSL_DIRECTORY_LITERAL) sslDir: Path
-        ):Path{
+        ): Path {
             return sslDir.resolve("SERVER")
         }
 
@@ -103,18 +128,18 @@ interface NettySSLModule{
         @Provides
         fun provideClientSSLPath(
             @Named(SSL_DIRECTORY_LITERAL) sslDir: Path
-        ):Path{
+        ): Path {
             return sslDir.resolve("CLIENT")
         }
     }
 }
 
 @Module
-interface NettyModule {
+interface NettyMainModule {
     companion object {
         const val TEST = "TEST"
         const val CONCRETE = "CONCRETE"
-        const val NETTY_COROUTINE_CONTEXT_LITERAL="NettyCoroutineContext"
+        const val NETTY_COROUTINE_CONTEXT_LITERAL = "NettyCoroutineContext"
 
 
         @NettyScope
@@ -125,9 +150,16 @@ interface NettyModule {
             appCoroutineContext: CoroutineContext
         ): CoroutineContext {
 
-            return appCoroutineContext+Dispatchers.IO
+            return appCoroutineContext + Dispatchers.IO
         }
 
+
+    }
+}
+
+@Module
+interface NettyAuthModule {
+    companion object {
         @NettyScope
         @Provides
         fun provideAuthH(
@@ -135,34 +167,11 @@ interface NettyModule {
             @Named(IS_TEST_LITERAL) isTest: Boolean
         ): AbstractAuthHandler {
             when (isTest) {
-                true -> return map.get(TEST)!!
-                false -> return map.get(CONCRETE)!!
+                true -> return map.get(NettyMainModule.TEST)!!
+                false -> return map.get(NettyMainModule.CONCRETE)!!
             }
         }
 
-        @NettyScope
-        @Provides
-        fun provideCommandH(
-            map: Map<String,@JvmSuppressWildcards AbstractCommandHandler>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractCommandHandler {
-            when (isTest) {
-                true -> return map.get(TEST)!!
-                false -> return map.get(CONCRETE)!!
-            }
-        }
-
-        @Provides
-        @NettyScope
-        fun provideRequestH(
-            map: Map<String, @JvmSuppressWildcards AbstractRequestHandler>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractRequestHandler {
-            when (isTest) {
-                true -> return map.get(TEST)!!
-                false -> return map.get(CONCRETE)!!
-            }
-        }
 
         @Provides
         @NettyScope
@@ -171,8 +180,8 @@ interface NettyModule {
             @Named(IS_TEST_LITERAL) isTest: Boolean
         ): UserRepo {
             when (isTest) {
-                true -> return map.get(TEST)!!
-                false -> return map.get(CONCRETE)!!
+                true -> return map.get(NettyMainModule.TEST)!!
+                false -> return map.get(NettyMainModule.CONCRETE)!!
             }
         }
     }
@@ -181,26 +190,13 @@ interface NettyModule {
     @NettyScope
     @Binds
     @IntoMap
-    @StringKey(TEST)
-     fun bindMockRequestH(mock: MockRequestHandler): AbstractRequestHandler
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(CONCRETE)
-    fun bindConcreteRequestH(concreteRequestHandler: ConcreteRequestHandler): AbstractRequestHandler
-
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(TEST)
+    @StringKey(NettyMainModule.TEST)
     fun bindMockAuthH(mockAuthHandler: MockAuthHandler): AbstractAuthHandler
 
     @NettyScope
     @Binds
     @IntoMap
-    @StringKey(CONCRETE)
+    @StringKey(NettyMainModule.CONCRETE)
     //TODO Осторожно только моки реализованны на данный момент
 
     fun bindConcreteAuthH(concreteAuthHandler: MockAuthHandler): AbstractAuthHandler
@@ -209,70 +205,155 @@ interface NettyModule {
     @NettyScope
     @Binds
     @IntoMap
-    @StringKey(TEST)
-    fun bindMockCommandH(mockCommandHandler: MockCommandHandler): AbstractCommandHandler
-
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(CONCRETE)
-    //TODO Осторожно только моки реализованны на данный момент
-
-    fun bindConcreteCommandH(concreteCommandHandler: ConcreteCommandHandler): AbstractCommandHandler
-
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(CONCRETE)
+    @StringKey(NettyMainModule.CONCRETE)
     //TODO Осторожно только моки реализованны на данный момент
     fun bindConcreteUserRepo(mockUserRepo: MockUserRepo): UserRepo
 
     @NettyScope
     @Binds
     @IntoMap
-    @StringKey(TEST)
+    @StringKey(NettyMainModule.TEST)
     //TODO Осторожно только моки реализованны на данный момент
     fun bindMockUserRepo(mockUserRepo: MockUserRepo): UserRepo
-//companion object{
-//        @NettyScope
-//        @Provides
-//        fun provideAuthHandler(
-//            @Named(IS_TEST_LITERAL) isTest: Boolean
-//        ): AbstractAuthHandler {
-//            if (isTest) {
-//                return MockAuthHandler()
-//            } else {
-//                return ConcreteAuthHandler()
-//            }
-//        }
-//        @NettyScope
-//        @Provides
-//        fun provideRequestHandler(
-//            @Named("isTest") isTest: Boolean
-//        ): AbstractRequestHandler {
-//            if (isTest) {
-//                return MockRequestHandler()
-//            } else {
-//                //TODO За неимением настоящего Хэндлера пока здесь будет висеть это, нужно не забыть убрать
-//                return MockRequestHandler()
-//            }
-//        }
-//
-//        @NettyScope
-//        @Provides
-//        fun provideCommandHandler(
-//            @Named(IS_TEST_LITERAL) isTest: Boolean,
-//
-//        ): AbstractCommandHandler {
-//            if (isTest) {
-//                return MockCommandHandler()
-//            } else {
-//                //TODO Пока не слепил конкрит - будет мок
-//                return MockCommandHandler()
-//            }
-//        }
+
+}
+
+
+@Module
+interface NettyFullRequestModesModule {
+
+    companion object {
+        const val COMMAND_MODE_LITERAL = "command"
+
+
+        @NettyScope
+        @Provides
+        fun provideCommandH(
+            map: Map<String, @JvmSuppressWildcards AbstractCommandHandler>,
+            @Named(IS_TEST_LITERAL) isTest: Boolean
+        ): AbstractCommandHandler {
+            when (isTest) {
+                true -> return map.get(NettyMainModule.TEST)!!
+                false -> return map.get(NettyMainModule.CONCRETE)!!
+            }
+        }
+
+        @Provides
+        @NettyScope
+        fun provideFullRequestRouter(
+            map: Map<String, @JvmSuppressWildcards AbstractFullRequestRouter>,
+            @Named(IS_TEST_LITERAL) isTest: Boolean
+        ): AbstractFullRequestRouter {
+            when (isTest) {
+                true -> return map.get(NettyMainModule.TEST)!!
+                false -> return map.get(NettyMainModule.CONCRETE)!!
+            }
+        }
+
+
+    }
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(COMMAND_MODE_LITERAL)
+    fun bindCommandHandlerToFullModeMap(commandHandler: AbstractCommandHandler): FullRequestWorkModeHandler
+
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.TEST)
+    fun bindMockCommandHandlerIntoMap(mockCommandHandler: MockCommandHandler): AbstractCommandHandler
+
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.CONCRETE)
+    fun bindConcreteCommandHandlerIntoMap(concreteCommandHandler: ConcreteCommandHandler): AbstractCommandHandler
+
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.TEST)
+    fun bindMockRequestHandlerIntoMap(mock: MockFullRequestRouter): AbstractFullRequestRouter
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.CONCRETE)
+    fun bindConcreteRequestHandlerIntoMap(concreteRequestHandler: ConcreteFullRequestRouter): AbstractFullRequestRouter
+
+
+}
+
+@Module
+interface NettyChunkedRequestModesModule {
+    companion object {
+        const val ROBOT_MODE_LITERAl = "robot"
+
+
+        @NettyScope
+        @Provides
+        fun provideRobotHandler(
+            map: Map<String, @JvmSuppressWildcards AbstractRobotHandler>,
+            @Named(IS_TEST_LITERAL) isTest: Boolean
+        ): AbstractRobotHandler {
+            when (isTest) {
+                true -> return map.get(NettyMainModule.TEST)!!
+                false -> return map.get(NettyMainModule.CONCRETE)!!
+            }
+        }
+
+        @Provides
+        @NettyScope
+        fun provideChunkedRequestRouter(
+            map: Map<String, @JvmSuppressWildcards AbstractChunkedRequestRouter>,
+            @Named(IS_TEST_LITERAL) isTest: Boolean
+        ): AbstractChunkedRequestRouter {
+            when (isTest) {
+                true -> return map.get(NettyMainModule.TEST)!!
+                false -> return map.get(NettyMainModule.CONCRETE)!!
+            }
+        }
+
+    }
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.TEST)
+    //TODO NB пока только конкрит
+    fun bindMockChunkedRouterIntoMap(mock: ConcreteChunkedRequestRouter): AbstractChunkedRequestRouter
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.CONCRETE)
+    fun bindConcreteChunkedRouterIntoMap(concreteChunkedRouter: ConcreteChunkedRequestRouter): AbstractChunkedRequestRouter
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.TEST)
+    //TODO NB пока только конкрит
+    fun bindMocRobotHabdlerIntoMap(mock: ConcreteRobotHandler): AbstractRobotHandler
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(NettyMainModule.CONCRETE)
+    fun bindConcreteRobotHabdlerIntoMap(concreteRobotHandler: ConcreteRobotHandler): AbstractRobotHandler
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(ROBOT_MODE_LITERAl)
+    fun bindRobotModeHandlerIntoMap(robotHandler: AbstractRobotHandler): ChunkWorkModeHandler
+
+
 }
 
 
