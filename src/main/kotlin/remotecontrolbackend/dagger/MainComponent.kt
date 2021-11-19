@@ -11,6 +11,8 @@ import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dagger.*
 
 import remotecontrolbackend.dns_sd_part.DnsSdManager
+import remotecontrolbackend.file_service_part.FileService
+import remotecontrolbackend.file_service_part.path_list_provider_part.IPathListProvider
 
 import remotecontrolbackend.netty_part.NettyConnectionManager
 import remotecontrolbackend.robot.RobotManager
@@ -23,22 +25,24 @@ import kotlin.coroutines.CoroutineContext
 const val PORT_LITERAL = "port"
 const val WORK_DIR_LITERAL = "workDir"
 const val IS_TEST_LITERAL = "isTest"
-const val APP_COROUTINE_CONTEXT_LITERAL="AppCoroutineContext"
-const val SSL_ENABLED_LITERAL="SSLEnabled"
-const val AUTH_ENABLED_LITERAL="AuthEnabled"
+const val APP_COROUTINE_CONTEXT_LITERAL = "AppCoroutineContext"
+const val SSL_ENABLED_LITERAL = "SSLEnabled"
+const val AUTH_ENABLED_LITERAL = "AuthEnabled"
 
 
 @Singleton
-@Component(modules = [MainModule::class, NettySubcomponentModule::class, DnsSdSubcomponentModule::class,
-    CommandInvokerSubcomponentModule::class,CommandInvokerSubcomponentModule::class,
-RobotManagerSubcomponentModule::class])
+@Component(
+    modules = [MainModule::class, NettySubcomponentModule::class, DnsSdSubcomponentModule::class,
+        CommandInvokerSubcomponentModule::class, CommandInvokerSubcomponentModule::class,
+        RobotManagerSubcomponentModule::class, FileServiceSubcomponentModule::class]
+)
 interface MainComponent {
     fun inject(mainClass: MainLauncher)
-   fun getCommandInvoker():CommandInvoker
+    fun getCommandInvoker(): CommandInvoker
     fun getComandInvokerSubcompBuilder(): CommandInvokerSubcomponent.CommandInvokerBuilder
     fun getNettySubcomponentBuilder(): NettySubComponent.NettySubComponentBuilder
     fun getLauncher(): MainLauncher
-    fun getRobotManager():RobotManager
+    fun getRobotManager(): RobotManager
 
     @Named(APP_COROUTINE_CONTEXT_LITERAL)
     fun getAppCoroutineContext(): CoroutineContext
@@ -46,6 +50,9 @@ interface MainComponent {
     @Component.Builder
     interface MainBuilder {
         fun buildMainComponent(): MainComponent
+
+        @BindsInstance
+        fun setPathProvider(filePathsProvider: IPathListProvider?): MainBuilder
 
         @BindsInstance
         fun setPort(@Named(PORT_LITERAL) portN: Int): MainBuilder
@@ -57,10 +64,10 @@ interface MainComponent {
         fun isTestRun(@Named(IS_TEST_LITERAL) isTest: Boolean): MainBuilder
 
         @BindsInstance
-        fun isSSLEnabled(@Named(SSL_ENABLED_LITERAL) isSSLEnabled:Boolean):MainBuilder
-        //TODO Сделать возможность выключить АУФ булеан флагом
+        fun isSSLEnabled(@Named(SSL_ENABLED_LITERAL) isSSLEnabled: Boolean): MainBuilder
+
         @BindsInstance
-        fun isAuthEnabled(@Named(AUTH_ENABLED_LITERAL) isAuthEnabled:Boolean):MainBuilder
+        fun isAuthEnabled(@Named(AUTH_ENABLED_LITERAL) isAuthEnabled: Boolean): MainBuilder
 
 
     }
@@ -105,10 +112,10 @@ interface NettySubcomponentModule {
         fun provideNettyManager(
             nettySubComponentBuilder: NettySubComponent.NettySubComponentBuilder,
             @Named(PORT_LITERAL) portN: Int,
-            @Named(SSL_ENABLED_LITERAL) isSSLEnabled:Boolean,
-        @Named(AUTH_ENABLED_LITERAL) isAuthEnabled: Boolean
+            @Named(SSL_ENABLED_LITERAL) isSSLEnabled: Boolean,
+            @Named(AUTH_ENABLED_LITERAL) isAuthEnabled: Boolean
         ): NettyConnectionManager {
-            return NettyConnectionManager(nettySubComponentBuilder, portN,isSSLEnabled,isAuthEnabled)
+            return NettyConnectionManager(nettySubComponentBuilder, portN, isSSLEnabled, isAuthEnabled)
         }
     }
 
@@ -126,23 +133,37 @@ interface CommandInvokerSubcomponentModule {
             invokerDirectory: Path,
             commandInvokerSubcomponentBuilder: CommandInvokerSubcomponent.CommandInvokerBuilder
         ): CommandInvoker {
-           return CommandInvoker(invokerDirectory, commandInvokerSubcomponentBuilder)
+            return CommandInvoker(invokerDirectory, commandInvokerSubcomponentBuilder)
         }
     }
 
 
-
 }
 
-@Module(subcomponents =[RobotManagerSubcomponent::class])
-interface RobotManagerSubcomponentModule{
-    companion object{
+@Module(subcomponents = [RobotManagerSubcomponent::class])
+interface RobotManagerSubcomponentModule {
+    companion object {
         @Singleton
         @Provides
         fun provideRobotManager(
-            subcomponentBuilder:RobotManagerSubcomponent.RobotManagerBuilder
-        ):RobotManager{
+            subcomponentBuilder: RobotManagerSubcomponent.RobotManagerBuilder
+        ): RobotManager {
             return RobotManager(subcomponentBuilder)
+        }
+    }
+}
+
+
+@Module(subcomponents = [FileServiceSubcomponent::class])
+interface FileServiceSubcomponentModule {
+    companion object {
+        @Singleton
+        @Provides
+        fun provideFileService(
+            fileServiceBuilder: FileServiceSubcomponent.Builder,
+            pathProvider:IPathListProvider?
+        ): FileService {
+            return FileService(fileServiceBuilder,pathProvider)
         }
     }
 }

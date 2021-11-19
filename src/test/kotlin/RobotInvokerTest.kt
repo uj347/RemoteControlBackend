@@ -1,14 +1,10 @@
-import io.netty.channel.DefaultChannelPromise
-import io.netty.util.concurrent.DefaultPromise
-import io.netty.util.concurrent.Promise
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import remotecontrolbackend.Utils.CommandPromise
-import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.robot.RobotCommandPack
 import java.nio.file.Paths
-import kotlin.test.assertEquals
+import java.util.concurrent.CompletableFuture
+
 
 class RobotInvokerTest {
 
@@ -28,13 +24,14 @@ class RobotInvokerTest {
 
         runBlocking {
 
-            var promiseToFulfill=CommandPromise()
+            var promiseToFulfill=CompletableFuture<Unit>()
 
 
 
             robotManager.robotActor.send(RobotCommandPack( testCommand,promiseToFulfill))
 delay(1000)
-       assertEquals(CommandPromise.State.SUCCESS,promiseToFulfill.state )
+       assert(promiseToFulfill.isDone )
+            assert(!promiseToFulfill.isCompletedExceptionally)
         }
     }
 
@@ -43,15 +40,15 @@ delay(1000)
 
         runBlocking {
 
-            val promiseToFulfill=CommandPromise()
+            val promiseToFulfill=CompletableFuture<Unit>()
 
 
             repeat(100){
                 println("Run $it")
                 robotManager.robotActor.send(RobotCommandPack(testCommand, promiseToFulfill))
                 delay(50)
-                assertEquals(CommandPromise.State.SUCCESS, promiseToFulfill.state)
-                promiseToFulfill.recharge()
+                assert(promiseToFulfill.isDone )
+                assert(!promiseToFulfill.isCompletedExceptionally)
 
             }
         }

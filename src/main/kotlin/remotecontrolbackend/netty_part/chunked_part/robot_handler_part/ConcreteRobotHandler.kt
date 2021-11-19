@@ -2,31 +2,29 @@ package remotecontrolbackend.netty_part.chunked_part.robot_handler_part
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandler.*
 import io.netty.channel.ChannelHandlerContext
-import io.netty.channel.SimpleChannelInboundHandler
-import io.netty.handler.codec.http.DefaultHttpContent
 import io.netty.handler.codec.http.HttpContent
 import io.netty.handler.codec.http.LastHttpContent
-import io.netty.util.concurrent.FutureListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.logging.log4j.LogManager
-import remotecontrolbackend.Utils.CommandPromise
 import remotecontrolbackend.dagger.NettyMainModule.Companion.NETTY_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent.Companion.ROBOT_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.send200Response
+import remotecontrolbackend.netty_part.utils.ChunkedChain
 import remotecontrolbackend.robot.RobotCommandPack
 import remotecontrolbackend.robot.RobotManager
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CompletableFuture
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.coroutines.CoroutineContext
 
 //TODO Переделать его в ЧэнелАдаптер
+@ChunkedChain
 @NettyScope
 @Sharable
 class ConcreteRobotHandler @Inject constructor() : AbstractRobotHandler() {
@@ -71,15 +69,15 @@ class ConcreteRobotHandler @Inject constructor() : AbstractRobotHandler() {
                         arrayOfStringArraysAdapter.fromJson(it.content().toString(StandardCharsets.UTF_8))
                     if (recievedCommands != null) {
                         logger.debug("Received commands: $recievedCommands")
-                        val promise = CommandPromise()
+                        var promise = CompletableFuture<Unit>()
                         for (commandArr in recievedCommands) {
                             runBlocking {
                                 logger.debug("performing processing of robot command: ${commandArr.get(0)}")
                                 CoroutineScope(nettyContext).launch {
                                     robotManager.robotActor.send(RobotCommandPack(commandArr, promise))
                                 }.join()
-                                logger.debug("RoboCommand ${commandArr[0]} executed: ${promise.state.name}")
-                                promise.recharge()
+                                logger.debug("RoboCommand ${commandArr[0]} executed")
+                                promise= CompletableFuture()
                             }
                         }
 

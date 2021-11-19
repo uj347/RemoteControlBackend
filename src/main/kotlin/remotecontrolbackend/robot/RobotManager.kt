@@ -1,19 +1,17 @@
 package remotecontrolbackend.robot
 //
-import io.netty.util.concurrent.Promise
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.SendChannel
 
 import kotlinx.coroutines.channels.actor
 import org.apache.logging.log4j.LogManager
-import remotecontrolbackend.Utils.CommandPromise
 import remotecontrolbackend.dagger.RobotManagerModule.Companion.ROBOT_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.dagger.RobotManagerSubcomponent
 import remotecontrolbackend.dagger.RobotScope
 import java.awt.Robot
-import java.lang.Exception
 import java.lang.RuntimeException
 import java.lang.reflect.Method
+import java.util.concurrent.CompletableFuture
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.coroutines.CoroutineContext
@@ -64,11 +62,11 @@ class RobotManager(robotManagerSubcomponentBuilder: RobotManagerSubcomponent.Rob
                 robot.invokeRoboCall(commandAr).let {
                     when (it) {
                         true -> {
-                            promise?.setSuccess()
+                            promise?.complete(Unit)
                             logger.debug("roboCommand completed succesfully")
                         }
                         false -> {
-                            promise?.setFailure()
+                            promise?.completeExceptionally(RuntimeException("roboCommand {${commandAr[0]}} failed"))
                             logger.debug("roboCommand {${commandAr[0]}} failed")
                             logger.error("roboCommand {${commandAr[0]}} failed")
                         }
@@ -111,6 +109,6 @@ class RobotManager(robotManagerSubcomponentBuilder: RobotManagerSubcomponent.Rob
 
 }
 
- data class RobotCommandPack(val commandArray:Array<String>, val promise: CommandPromise?=null) {
+ data class RobotCommandPack(val commandArray:Array<String>, val promise:CompletableFuture<Unit>?) {
 
 }

@@ -2,8 +2,10 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
+import io.netty.channel.ChannelFuture
 import io.netty.channel.embedded.EmbeddedChannel
 import io.netty.handler.codec.http.*
+import io.netty.util.concurrent.Future
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.io.FileUtils
@@ -14,6 +16,7 @@ import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.dagger.NettySubComponent
+import remotecontrolbackend.dagger.NettySubComponent.Companion.HTTP_AGGREGATOR_LITERAL
 import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.CommandStrategy
@@ -23,7 +26,10 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.io.path.exists
+import kotlin.reflect.full.companionObject
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 
 class NettyManagerTest {
 
@@ -253,6 +259,35 @@ class NettyManagerTest {
             delay(1000)
             assertEquals((testChannel.readOutbound() as FullHttpResponse).status(), HttpResponseStatus.OK)
         }
+    }
+
+//TODO Проверить работает ли предееланный чанкед итерсептор
+    @Test
+    fun checkChunkedInterceptorWorks(){
+        val testChannel=EmbeddedChannel()
+        val testPipeline=testChannel.pipeline()
+        val chunkedInterceptor=nettySubcomponent.getChunkedInterceptor()
+        testPipeline.addLast(HttpRequestDecoder())
+            .addLast(chunkedInterceptor.handlerDescription,chunkedInterceptor)
+            .addLast(HTTP_AGGREGATOR_LITERAL,HttpObjectAggregator(8000))
+
+    println("Current test pipeline is ${testPipeline.names()}")
+    val chunkedRequest=DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,"/popo").also {
+        it.headers().add(HttpHeaderNames.TRANSFER_ENCODING,HttpHeaderValues.CHUNKED)
+    }
+    var f: Future<out Any?>? =null
+    testChannel.writeOneInbound(chunkedRequest).addListener {
+        f=it
+        val received=testChannel.readOutbound<Any?>()
+        println("Msg received is $received")
+        println("Current test pipeline is ${testPipeline.names()}")
+        assertNotNull(received)
+        assert( received is HttpResponse)
+        assertEquals((received as HttpResponse).status(), HttpResponseStatus.NOT_IMPLEMENTED)
+
+    }
+    f?.await()
+
     }
 }
 

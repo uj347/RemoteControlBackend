@@ -1,18 +1,19 @@
 package remotecontrolbackend.netty_part.full_request_part.command_handler_part
 
 import io.netty.buffer.ByteBuf
-import io.netty.channel.ChannelHandler
+import io.netty.channel.ChannelHandler.*
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dagger.NettySubComponent
+import remotecontrolbackend.netty_part.utils.FullRequestChain
 import java.nio.charset.Charset
 import javax.inject.Inject
 
-@ChannelHandler.Sharable
-
+@FullRequestChain
+@Sharable
 class MockCommandHandler @Inject constructor(commandInvoker: CommandInvoker): AbstractCommandHandler(commandInvoker){
 
     companion object {

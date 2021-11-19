@@ -1,24 +1,27 @@
 package remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part
 
-import io.netty.channel.ChannelHandler
+import io.netty.channel.ChannelHandler.*
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import org.apache.logging.log4j.LogManager
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent
+import remotecontrolbackend.dagger.NettySubComponent.Companion.CHUNKED_REQUEST_ROUTER_LITERAL
 import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
-import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.ConcreteRobotHandler
-import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
-import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.ConcreteFullRequestRouter
 import remotecontrolbackend.netty_part.send501Response
+import remotecontrolbackend.netty_part.utils.ChunkedChain
 import javax.inject.Inject
 //TODO
-@ChannelHandler.Sharable
+@ChunkedChain
+@Sharable
 @NettyScope
 class ConcreteChunkedRequestRouter @Inject constructor():AbstractChunkedRequestRouter() {
    companion object{
        val logger=LogManager.getLogger()
+       val handlerDescription=CHUNKED_REQUEST_ROUTER_LITERAL
    }
+    val handlerDescription
+        get()= Companion.handlerDescription
 
     @Inject
   lateinit var chunkedRequestHandlers:Map<String,@JvmSuppressWildcards ChunkWorkModeHandler>
@@ -43,12 +46,23 @@ class ConcreteChunkedRequestRouter @Inject constructor():AbstractChunkedRequestR
             logger.debug("Received message with workMode: $workMode")
             when (workMode) {
                 in chunkedRequestHandlers -> {
-                    ctx?.let{
+                    ctx?.let{context->
+                        //Проверить не модифирован ли пайплайн уже и удалить чанкед Хэндлеры, даже если они подходят,
+                        //вдруг у меня в будующем хватит ума сделать стэйтфул хэндлеры.
+                       val pipelineIter= context.pipeline().iterator()
+                        while(pipelineIter.hasNext()){
+                            val nextEntry=pipelineIter.next()
+                            if(nextEntry.value::class in chunkedRequestHandlers.values.map { it::class }){
+                                logger.debug("Removing already present Chunked handler from pipeline")
+                                pipelineIter.remove()
+                            }
+                        }
+
                         val targetHandler=chunkedRequestHandlers.get(workMode)!!
                         logger.debug("Modifying pipeline, adding handler: ${targetHandler.handlerDescription}")
-                        it.pipeline().addAfter(NettySubComponent.CHUNKED_REQUEST_ROUTER_LITERAL,targetHandler.handlerDescription ,targetHandler)
+                        context.pipeline().addAfter(NettySubComponent.CHUNKED_REQUEST_ROUTER_LITERAL,targetHandler.handlerDescription ,targetHandler)
                         logger.debug("Firing read to the next handler")
-                        it.fireChannelRead(httpMsg)
+                        context.fireChannelRead(httpMsg)
 
                     }
 

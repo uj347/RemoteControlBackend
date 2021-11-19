@@ -1,6 +1,6 @@
 package remotecontrolbackend.netty_part.full_request_part.command_handler_part
 
-import io.netty.channel.ChannelHandler
+import io.netty.channel.ChannelHandler.*
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.FullHttpRequest
 import io.netty.handler.codec.http.HttpMethod
@@ -15,6 +15,7 @@ import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dagger.NettySubComponent.Companion.COMMAND_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.send200Response
 import remotecontrolbackend.netty_part.send500Response
+import remotecontrolbackend.netty_part.utils.FullRequestChain
 import java.lang.RuntimeException
 import javax.inject.Inject
 
@@ -23,7 +24,8 @@ import javax.inject.Inject
  *{@link CommandStrategy}
  * при отсутствии стратеджи в POST реквесте будет использована postfair
  */
-@ChannelHandler.Sharable
+@FullRequestChain
+@Sharable
 class ConcreteCommandHandler
 @Inject constructor(commandInvoker: CommandInvoker) : AbstractCommandHandler(commandInvoker) {
 

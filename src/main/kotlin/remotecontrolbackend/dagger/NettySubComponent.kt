@@ -15,6 +15,7 @@ import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
 import remotecontrolbackend.netty_part.auth_part.MockAuthHandler
 import remotecontrolbackend.netty_part.auth_part.MockUserRepo
 import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
+import remotecontrolbackend.netty_part.TransferEncodingInterceptor
 import remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part.AbstractChunkedRequestRouter
 import remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part.ConcreteChunkedRequestRouter
 import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.AbstractRobotHandler
@@ -44,7 +45,7 @@ interface NettySubComponent {
         const val COMMAND_HANDLER_LITERAL = "COMMAND_HANDLER"
         const val FULL_REQUEST_ROUTER_LITERAL = "FULL_REQUEST_ROUTER"
         const val CHUNKED_REQUEST_ROUTER_LITERAL = "CHUNKED_REQUEST_ROUTER"
-        const val CHUNKED_INTERCEPTOR_LITERAL = "CHUNKED_INTERCEPTOR"
+        const val TRANSFER_ENCODING_INTERCEPTOR_LITERAL = "TRANSFER_ENCODING_INTERCEPTOR"
         const val ROBOT_HANDLER_LITERAL = "ROBOT_HANDLER"
         const val SSL_HANDLER_LITERAL = "SSL_HANDLER"
         const val AUTH_HANDLER_LITERAL = "AUTH_HANDLER"
@@ -59,6 +60,8 @@ interface NettySubComponent {
     fun getFullRequestRouter(): AbstractFullRequestRouter
     fun getAuthHandler(): AbstractAuthHandler
     fun getCommandHandler(): AbstractCommandHandler
+    fun getChunkedInterceptor(): TransferEncodingInterceptor
+
 
     @Named(NETTY_COROUTINE_CONTEXT_LITERAL)
     fun getNettyCoroutineContext(): CoroutineContext

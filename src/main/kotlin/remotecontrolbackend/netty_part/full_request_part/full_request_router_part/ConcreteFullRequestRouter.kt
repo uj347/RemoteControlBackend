@@ -1,5 +1,6 @@
 package remotecontrolbackend.netty_part.full_request_part.full_request_router_part
 
+import io.netty.channel.ChannelHandler.*
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import org.apache.logging.log4j.LogManager
@@ -8,9 +9,11 @@ import remotecontrolbackend.dagger.NettySubComponent.Companion.FULL_REQUEST_ROUT
 import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
 import remotecontrolbackend.netty_part.send501Response
+import remotecontrolbackend.netty_part.utils.FullRequestChain
 
 import javax.inject.Inject
-
+@Sharable
+@FullRequestChain
 @NettyScope
 class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRouter() {
 
@@ -27,6 +30,7 @@ class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRoute
 
 
     }
+
 
     override fun channelRead0(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
         if (HttpUtil.is100ContinueExpected(msg)) {

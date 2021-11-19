@@ -3,7 +3,7 @@ package remotecontrolbackend.netty_part.full_request_part.command_handler_part
 import com.squareup.moshi.Types
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufUtil
-import io.netty.channel.ChannelHandler
+import io.netty.channel.ChannelHandler.*
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.*
@@ -12,19 +12,22 @@ import org.apache.logging.log4j.Logger
 import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
+import remotecontrolbackend.dagger.NettySubComponent.Companion.COMMAND_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
+import remotecontrolbackend.netty_part.utils.FullRequestChain
 import java.lang.RuntimeException
 import java.lang.reflect.Type
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import kotlin.jvm.Throws
-
-@ChannelHandler.Sharable
+@FullRequestChain
+@Sharable
 abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
     FullRequestWorkModeHandler() {
     companion object {
         private val _logger = LogManager.getLogger()
+        val handlerDescription=COMMAND_HANDLER_LITERAL
     }
 
     abstract val logger: Logger

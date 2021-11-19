@@ -20,7 +20,7 @@ import remotecontrolbackend.dagger.NettyMainModule.Companion.NETTY_COROUTINE_CON
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.dagger.NettySubComponent.Companion.AUTH_HANDLER_LITERAL
-import remotecontrolbackend.dagger.NettySubComponent.Companion.CHUNKED_INTERCEPTOR_LITERAL
+import remotecontrolbackend.dagger.NettySubComponent.Companion.TRANSFER_ENCODING_INTERCEPTOR_LITERAL
 import remotecontrolbackend.dagger.NettySubComponent.Companion.EXCEPTION_CATCHER_LITERAL
 import remotecontrolbackend.dagger.NettySubComponent.Companion.HTTP_AGGREGATOR_LITERAL
 import remotecontrolbackend.dagger.NettySubComponent.Companion.HTTP_CODEC_LITERAL
@@ -28,7 +28,6 @@ import remotecontrolbackend.dagger.NettySubComponent.Companion.FULL_REQUEST_ROUT
 import remotecontrolbackend.dagger.NettySubComponent.Companion.SSL_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.NettySslContextProvider.Companion.logger
 import remotecontrolbackend.netty_part.auth_part.AbstractAuthHandler
-import remotecontrolbackend.netty_part.chunked_part.ChunkedInterceptor
 import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.AbstractFullRequestRouter
 import javax.inject.Inject
 import javax.inject.Named
@@ -69,7 +68,7 @@ class NettyConnectionManager(
     lateinit var sslContextProvider: NettySslContextProvider
 
     @Inject
-    lateinit var chunkedInterceptor: ChunkedInterceptor
+    lateinit var chunkedInterceptor: TransferEncodingInterceptor
 
 
     fun launchNetty() {
@@ -109,7 +108,7 @@ class NettyConnectionManager(
                                     }
 
                                     it.pipeline().addLast(
-                                        CHUNKED_INTERCEPTOR_LITERAL,
+                                        TRANSFER_ENCODING_INTERCEPTOR_LITERAL,
                                         chunkedInterceptor
 
                                     )

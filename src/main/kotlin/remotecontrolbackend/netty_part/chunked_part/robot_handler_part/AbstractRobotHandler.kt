@@ -1,5 +1,7 @@
 package remotecontrolbackend.netty_part.chunked_part.robot_handler_part
 
 import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
+import remotecontrolbackend.netty_part.utils.ChunkedChain
 
+@ChunkedChain
 abstract class AbstractRobotHandler:ChunkWorkModeHandler()
