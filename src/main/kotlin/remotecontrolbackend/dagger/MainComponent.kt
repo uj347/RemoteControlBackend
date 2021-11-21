@@ -43,6 +43,9 @@ interface MainComponent {
     fun getNettySubcomponentBuilder(): NettySubComponent.NettySubComponentBuilder
     fun getLauncher(): MainLauncher
     fun getRobotManager(): RobotManager
+    fun getFileServiceSubcomponentBuilder():FileServiceSubcomponent.Builder
+    fun getFileService():FileService
+
 
     @Named(APP_COROUTINE_CONTEXT_LITERAL)
     fun getAppCoroutineContext(): CoroutineContext

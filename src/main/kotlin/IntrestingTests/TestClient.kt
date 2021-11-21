@@ -13,6 +13,7 @@ import io.netty.handler.codec.http.HttpHeaderValues.APPLICATION_JSON
 import io.netty.handler.logging.LoggingHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import remotecontrolbackend.ROOT_DIR
 import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import java.net.SocketAddress
@@ -30,7 +31,7 @@ class TestClient {
 
     val mainComponent = DaggerMainComponent
         .builder()
-        .setWorkDirectory(Paths.get("J:\\InvokerTest\\Testosteron"))
+        .setWorkDirectory(Paths.get(ROOT_DIR))
         .setPort(34444)
         .isTestRun(true)
         .isSSLEnabled(false)

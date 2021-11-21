@@ -23,7 +23,7 @@ import kotlin.test.assertEquals
 
 class CommandRepoTests {
     lateinit var repo:CommandRepo;
-    val testPath=Paths.get("j:\\Ujtrash\\testo")
+    val testPath=Paths.get(TEST_DIRECTORY)
     val testRepoPath=testPath.resolve(REPODIR)
     val testSerializedCommandsDir=testRepoPath.resolve(SERIALIZED_COMMANDS_DIR)
     val testPointeMapPath=testRepoPath.resolve(POINTER_MAP_FILE_NAME)

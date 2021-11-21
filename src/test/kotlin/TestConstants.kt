@@ -1,0 +1,1 @@
+const val TEST_DIRECTORY="c:\\Ujtrash\\Test\\"

@@ -35,7 +35,7 @@ class NettyManagerTest {
 
     val nettySubcomponent: NettySubComponent = DaggerMainComponent
         .builder()
-        .setWorkDirectory(Paths.get("j:\\testo"))
+        .setWorkDirectory(Paths.get(TEST_DIRECTORY))
         .setPort(34444)
         .isTestRun(false)
         .isSSLEnabled(false)

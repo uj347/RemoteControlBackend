@@ -10,7 +10,7 @@ import kotlin.io.path.exists
 
 class CommandInvokerTests {
 
-    val testPath= Paths.get("j:\\Ujtrash\\testo")
+    val testPath= Paths.get(TEST_DIRECTORY)
     val testRepoPath=testPath.resolve(REPODIR)
     val testSerializedCommandsDir=testRepoPath.resolve(SERIALIZED_COMMANDS_DIR)
     val testPointeMapPath=testRepoPath.resolve(POINTER_MAP_FILE_NAME)
@@ -192,7 +192,7 @@ class CommandInvokerTests {
                  commandInvoker.putCommand(batCommand)
            println(commandInvoker.workQueue)
 
-           delay(400)
+           delay(700)
 
 
            // Check is compiled file created

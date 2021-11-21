@@ -15,6 +15,7 @@ import org.apache.commons.compress.archivers.ArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.utils.IOUtils
+import remotecontrolbackend.ROOT_DIR
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
@@ -59,9 +60,9 @@ class Zipper() : SimpleChannelInboundHandler<Path>() {
             println("Before zip stream construction in executor block in Thread: ${Thread.currentThread().name}")
             ZipArchiveOutputStream(pipeOut).use { zipStream ->
 //TODO
-                zipStream.putArchiveEntry(ZipArchiveEntry(File("j:\\testbooba.flac"), "testBooba.flac"))
+                zipStream.putArchiveEntry(ZipArchiveEntry(File(ROOT_DIR+"testbooba.flac"), "testBooba.flac"))
                 IOUtils.copy(
-                    BufferedInputStream(FileInputStream("j:\\testbooba.flac")),
+                    BufferedInputStream(FileInputStream(ROOT_DIR)),
                     zipStream
                 )
                 zipStream.closeArchiveEntry()
@@ -111,7 +112,7 @@ class TestFileHandler() : ChannelInboundHandlerAdapter() {
 
         ctx?.writeAndFlush(headers)
         println("Rq is written")
-        ctx?.fireChannelRead(Paths.get("j:\\testbooba.flac"))
+        ctx?.fireChannelRead(Paths.get(ROOT_DIR))
         println("Path written")
     }
 
@@ -121,7 +122,7 @@ class TestFileHandler() : ChannelInboundHandlerAdapter() {
 
 
 
-class FileAccumHandler(val fileToCreate: Path = Paths.get("j:\\Receivedbooba.zip")) :
+class FileAccumHandler(val fileToCreate: Path = Paths.get(ROOT_DIR)) :
     ChannelOutboundHandlerAdapter() {
 
     private val chunksReaded: AtomicInteger = AtomicInteger(0)

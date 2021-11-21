@@ -13,14 +13,14 @@ import javax.inject.Named
 import javax.inject.Singleton
 import kotlin.coroutines.CoroutineContext
 
-
+const val ROOT_DIR="c:\\Ujtrash\\Test\\"
 const val PORT = 34747
 fun main() {
    runBlocking {
 
         val launcher=DaggerMainComponent.builder()
             .setPort(PORT)
-            .setWorkDirectory(Paths.get("J:\\InvokerTest\\Testosteron"))
+            .setWorkDirectory(Paths.get(ROOT_DIR))
             .isTestRun(false)
             .isSSLEnabled(false)
             .isAuthEnabled(false)
