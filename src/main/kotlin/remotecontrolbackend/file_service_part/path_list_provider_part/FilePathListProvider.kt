@@ -16,7 +16,7 @@ class FilePathListProvider(val manifestFile: Path):IPathListProvider {
         pathsFromManifest=manifestFile.readLines(StandardCharsets.UTF_8).map{Paths.get(it)}.toList()
     }
 
-    override fun provide(): Collection<Path> {
+    override fun get(): Collection<Path> {
        return pathsFromManifest
     }
 }

@@ -38,6 +38,7 @@ dependencies {
     implementation("io.github.hakky54:sslcontext-kickstart:7.0.2")
     implementation("io.github.hakky54:sslcontext-kickstart-for-pem:7.0.2")
     implementation("org.apache.commons:commons-compress:1.21")
+    implementation("org.mockito:mockito-core:4.1.0")
 
 
 }

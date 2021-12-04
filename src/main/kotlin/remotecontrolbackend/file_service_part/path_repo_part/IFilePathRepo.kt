@@ -10,4 +10,5 @@ interface IFilePathRepo {
     fun get():Collection<Path>
     fun add(vararg path:Path):Boolean
     fun remove(vararg path: Path):Boolean
+
 }

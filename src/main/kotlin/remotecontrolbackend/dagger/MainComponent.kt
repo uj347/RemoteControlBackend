@@ -54,7 +54,7 @@ interface MainComponent {
     interface MainBuilder {
         fun buildMainComponent(): MainComponent
 
-        @BindsInstance
+        @BindsInstance()
         fun setPathProvider(filePathsProvider: IPathListProvider?): MainBuilder
 
         @BindsInstance

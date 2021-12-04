@@ -6,13 +6,21 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import jdk.jfr.Name
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
+import remotecontrolbackend.dagger.FileServiceModule.Companion.DROP_BOX_DIRECTORY_LITERAL
+import remotecontrolbackend.dagger.FileServiceModule.Companion.FILESERVICE_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.file_service_part.FileService
 import remotecontrolbackend.file_service_part.PathMonitor
 import remotecontrolbackend.file_service_part.path_repo_part.IFilePathRepo
 import remotecontrolbackend.file_service_part.path_repo_part.RuntimeFilePathRepo
 import java.nio.file.Path
 import javax.inject.Named
+import javax.inject.Provider
 import javax.inject.Scope
 import kotlin.coroutines.CoroutineContext
 
@@ -20,8 +28,12 @@ import kotlin.coroutines.CoroutineContext
 @Subcomponent(modules = [FileServiceModule::class])
 interface FileServiceSubcomponent {
 fun inject(fileService: FileService)
-fun getRuntimeFilePathRepo():RuntimeFilePathRepo
-fun getPathMonitor():PathMonitor
+fun getRuntimeFilePathRepoProvider():Provider<IFilePathRepo>
+fun getPathMonitorFactory():PathMonitorFactory
+fun getFileService():FileService
+@Named(DROP_BOX_DIRECTORY_LITERAL) fun getDropBoxPath():Path
+@Named(FILESERVICE_COROUTINE_CONTEXT_LITERAL)
+fun getCoroutineContext():CoroutineContext
     @Subcomponent.Builder
     interface Builder {
         fun build(): FileServiceSubcomponent
@@ -31,9 +43,7 @@ fun getPathMonitor():PathMonitor
 @Module
 interface FileServiceModule{
 //TODO Пока без выбора, мб позже что то придумаю с другими имплементациями пафРепо
-    @FileServiceScope
-    @Binds
-    fun bindFilePathRepo(runtimeFilePathRepo: RuntimeFilePathRepo):IFilePathRepo
+
 
 
     companion object{
@@ -47,6 +57,10 @@ interface FileServiceModule{
     const val FILESERVICE_COROUTINE_CONTEXT_LITERAL="FILESERVICE_COROUTINE_CONTEXT"
 
 
+        @Provides
+        fun bindFilePathRepo():IFilePathRepo{
+            return RuntimeFilePathRepo()
+        }
 
 
 @FileServiceScope
@@ -68,8 +82,17 @@ interface FileServiceModule{
 fun provideFileServiceCoroutineContext(
         @Named(APP_COROUTINE_CONTEXT_LITERAL)
         appCoroutineContext: CoroutineContext
-    ): CoroutineContext {return appCoroutineContext + Dispatchers.IO}
+    ): CoroutineContext {return appCoroutineContext + Dispatchers.IO+ SupervisorJob(appCoroutineContext.job)}
 }
+}
+
+@AssistedFactory
+interface PathMonitorFactory{
+    companion object{
+        const val OBSERVED_PATH_REPO_LITERAL="OBSERVED_PATH_REPO"
+        const val EXCEPTED_PATH_REPO_LITERAL="EXCEPTED_PATH_REPO"
+    }
+    fun createFor(@Assisted(OBSERVED_PATH_REPO_LITERAL) observedPathRepo: IFilePathRepo, @Assisted (EXCEPTED_PATH_REPO_LITERAL)exceptedPathRepo: IFilePathRepo):PathMonitor
 }
 
 

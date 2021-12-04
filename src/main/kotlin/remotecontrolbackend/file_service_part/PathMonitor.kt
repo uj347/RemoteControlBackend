@@ -1,93 +1,156 @@
 package remotecontrolbackend.file_service_part
 
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import jdk.jfr.Name
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.SharedFlow
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor
 import org.apache.commons.io.monitor.FileAlterationObserver
 import org.apache.logging.log4j.LogManager
 import remotecontrolbackend.dagger.FileServiceModule.Companion.FILESERVICE_COROUTINE_CONTEXT_LITERAL
+import remotecontrolbackend.dagger.PathMonitorFactory.Companion.EXCEPTED_PATH_REPO_LITERAL
+import remotecontrolbackend.dagger.PathMonitorFactory.Companion.OBSERVED_PATH_REPO_LITERAL
 import remotecontrolbackend.file_service_part.path_repo_part.DataSetCallBack
 import remotecontrolbackend.file_service_part.path_repo_part.DataSetListener
 import remotecontrolbackend.file_service_part.path_repo_part.IFilePathRepo
 import java.io.File
 import java.nio.file.Path
-import java.util.concurrent.CancellationException
-import java.util.concurrent.ConcurrentSkipListSet
-import javax.inject.Inject
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Named
 import kotlin.coroutines.CoroutineContext
+import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 
 //Монитор на корутинах, используя коммонс ио файл чэнж листенер
 //Подумать стоит ли заморачиваться с инжектом или же просто создать инстанс в файл сервисе
 // Как вариант  - прсто убрать из конструктора файл репо , добавить метод сетРепо и инит, чтобы дать стартовые параметры,а дальше пусть ебется сам
-class PathMonitor @Inject constructor(val repo: IFilePathRepo,
-                                      @Named(FILESERVICE_COROUTINE_CONTEXT_LITERAL)
-                                      val fileServiceContext: CoroutineContext) :
-    DataSetListener {
+class PathMonitor @AssistedInject constructor(
+    @Assisted(OBSERVED_PATH_REPO_LITERAL)
+    val observedPathsRepo: IFilePathRepo,
+    @Assisted(EXCEPTED_PATH_REPO_LITERAL)
+    val exceptedPathsRepo:IFilePathRepo,
+    @Named(FILESERVICE_COROUTINE_CONTEXT_LITERAL)
+    val fileServiceContext: CoroutineContext
+) : DataSetListener {
+//TODO Приделать поддержку наблюдения за эксептед паф репо для рантайм удаления обсерверов для  ексептед путей , а мб и оставить все как есть
     companion object {
         val logger = LogManager.getLogger()
     }
 
     //TODO Проверить работает ли это
-    val callBackFlow: MutableSharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>> = MutableSharedFlow(onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val repoCallBackNotificationFlow: SharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>>
+        get() = _repoCallBackNotificationFlow
+    private val _repoCallBackNotificationFlow: MutableSharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>> =
+        MutableSharedFlow()
 
-    private val observableDirs = ConcurrentSkipListSet<Path>()
-    private val observers = ConcurrentSkipListSet<FileAlterationObserver>()
+    val fileAlterationNotificationFlow: SharedFlow<Pair<Path, String>>
+        get() = _fileAlterationNotificationFlow
+    private val _fileAlterationNotificationFlow = MutableSharedFlow<Pair<Path, String>>()
 
-    private val monitorScope = CoroutineScope(fileServiceContext)
-    private val pathMonitorJob = monitorScope.launch(start = CoroutineStart.LAZY) {
-        delay(1000)
-        for (observer in observers) {
-            observer.checkAndNotify()
-        }
-    }
+    val observableDirs: Set<Path>
+        get() = _observableDirs
+    private val _observableDirs = ConcurrentHashMap.newKeySet<Path>()
+
+    private val observers = ConcurrentHashMap<Path, FileAlterationObserver>()
+
+//    private val monitorContext = fileServiceContext
+    private val monitorScope = CoroutineScope(fileServiceContext+SupervisorJob(fileServiceContext.job))
+    private var pathMonitorJob: Job? = null
+
+    val initialized: Boolean
+        get() = _initialized
+    private var _initialized = false
+
+    val launched: Boolean
+        get() = pathMonitorJob?.isActive ?: false
 
 
     fun initialize() {
         val topLevelDirs = mutableSetOf<Path>()
-        val allRepoDirs = repo.get()
+        val allRepoDirs = observedPathsRepo.get()
             .map { it.toAbsolutePath() }
             .filter { it.isDirectory() }
             .toList().toMutableSet()
+        logger.debug("All content of repo is ${observedPathsRepo.get()}")
+        logger.debug("All observed dirs is: $allRepoDirs")
 
-        allRepoDirs.extractTopLevelDirsToCollection(observableDirs).also {
-            logger.debug("Initialized Path Monitor with $it")
+        allRepoDirs.findTopLevelDirs(_observableDirs).let {
+            _observableDirs.addAll(it)
+            logger.debug("Initialized $this Path Monitor with $it")
         }
 
-        for (navigableDir in observableDirs) {
+        for (navigableDir in _observableDirs) {
             runCatching {
                 val observer = FileAlterationObserver(navigableDir.toFile())
                     .also {
                         it.addListener(customFAL)
                         it.initialize()
+                        observers.put(navigableDir, it)
+
                     }
                 logger.debug("Added observer for dir: $navigableDir")
             }.onFailure {
                 logger.error(it)
             }
         }
-
-        pathMonitorJob.start()
-
+        _initialized = true
     }
 
+
+    fun launch() {
+        logger.debug("PathMonitor $this launched")
+        if (!launched) {
+            observedPathsRepo.registerListener(this)
+            pathMonitorJob = monitorScope.launch {
+                launch {
+                    while (this.isActive) {
+                        for (entry in observers) {
+                            entry.value.let { observer ->
+                                observer.checkAndNotify()
+                            }
+                        }
+                        delay(1000)
+                    }
+                }
+                launch {
+                    while (isActive) {
+                        delay(15000)
+                        cleanUp()
+                    }
+                }
+            }
+        }
+    }
+
+
     fun stop() {
-        monitorScope.cancel(CancellationException("Stopped by user"))
+        //TODO Точно лии это здесь нужно
+        logger.debug("Stopping $this pathMonitor")
+        observedPathsRepo.deregisterListener(this)
+        pathMonitorJob?.cancel()
     }
 
 
     override fun provideCallBack(): DataSetCallBack {
         return dataSetCallBack
     }
-//TODO Most be heavily checked
-    /** Потный кусок *** который должен брать только  топ-левел дирректории из одной коллекции и пихать их в другую,
-    возвращая коллекцию состоящую из того что он только что пропихнул во вторую коллекцию*/
-    private fun Collection<Path>.extractTopLevelDirsToCollection(target: MutableCollection<Path>): Collection<Path> {
 
+    /** Очистть репо от несущестующих путей*/
+    private fun cleanUp() {
+        val repoPaths = observedPathsRepo.get()
+        for (path in repoPaths) {
+            if (!path.exists()) {
+                observedPathsRepo.remove(path)
+            }
+        }
+    }
+
+//TODO Most be heavily checked
+    /** Потный кусок *** который должен брать только  топ-левел дирректории из одной коллекции и возвращать их в виде списка */
+    private fun Collection<Path>.findTopLevelDirs(target: MutableCollection<Path>): Collection<Path> {
+logger.debug("In finding top lvl dirs with collection:$this \n and target: $target ")
         val isDirectory = { p: Path ->
             p.isDirectory()
         }
@@ -111,40 +174,47 @@ class PathMonitor @Inject constructor(val repo: IFilePathRepo,
             }
             result
         }
-        val alterationSet = HashSet<Path>()
+        val resultSet = HashSet<Path>()
         this.filter(isDirectory)
             .filterNot(hasParentsInTargetSet)
             .filterNot(hasParentsInSourceSet)
             .forEach {
-                alterationSet.add(it)
-                target.add(it)
+                resultSet.add(it)
             }
-        return alterationSet
+        return resultSet
     }
 
     /**Returns true if some observers was removed.*/
     private fun removeObserverForPaths(paths: Collection<Path>): Boolean {
         var result = false
         paths.forEach { path ->
-            observers.filter { it.directory.toPath() == path }
+            observers.filter { it.key == path }
                 .forEach {
-                    logger.debug("Removing observer for dirrectory ${it.directory.toPath()}")
-                    it.destroy()
-                    result = observers.remove(it)
-
+                    logger.debug("Removing observer for dirrectory ${it.key}")
+                    result = observers.remove(it.key, it.value)
+                    it.value.destroy()
                 }
-            observableDirs.filter{it==path}.forEach{observableDirs.remove(it)}
+            _observableDirs.filter { it == path }.forEach { _observableDirs.remove(it) }
         }
+        logger.debug("Result of topLvl Extraction is:")
         return result
     }
 
+//    private fun removePathsFromMonitorScope(paths: Collection<Path>) {
+//        for (path in paths) {
+//            observers.get(path)?.destroy()
+//            observers.remove(path)
+//            _observableDirs.remove(path)
+//
+//        }
+//    }
 
     /** Returns true if some observers was added**/
     private fun addObserversForPaths(paths: Collection<Path>): Boolean {
         var result = false
         paths.forEach { path ->
             var pathAlreadyObserved = false
-            observers.filter { it.directory.toPath() == path }
+            observers.filter { it.key == path }
                 .forEach {
                     pathAlreadyObserved = true
                 }
@@ -153,6 +223,7 @@ class PathMonitor @Inject constructor(val repo: IFilePathRepo,
                     val newObserver = FileAlterationObserver(path.toFile()).also {
                         it.addListener(customFAL)
                         it.initialize()
+                        observers.put(path, it)
                         result = true
                     }
                 }.onFailure { logger.error(it) }
@@ -163,44 +234,80 @@ class PathMonitor @Inject constructor(val repo: IFilePathRepo,
 
     private val customFAL = object : FileAlterationListenerAdaptor() {
         //TODO
+        fun File.notifyAlteration(altType: String) {
+            val alteredPath = this.toPath()
+            monitorScope.launch {
+                _fileAlterationNotificationFlow.emit(alteredPath to altType)
+            }
+        }
+
+        override fun onFileChange(file: File?) {
+            file?.let {
+                logger.debug("Changed file spotted: ${it.toPath()}, adding it to repo")
+                observedPathsRepo.add(it.toPath())
+                it.notifyAlteration("FILE_CHNG")
+            }
+        }
+
         override fun onDirectoryCreate(directory: File?) {
-            directory?.let{
+            directory?.let {
                 logger.debug("Newly created directory spotted: ${it.toPath()}, adding it to repo")
-                repo.add(it.toPath())
+                observedPathsRepo.add(it.toPath())
+                it.notifyAlteration("DIR_CRT")
             }
 
         }
 
         override fun onFileCreate(file: File?) {
-            file?.let{
+            file?.let {
                 logger.debug("Newly created file spotted: ${it.toPath()}, adding it to repo")
-                repo.add(it.toPath())
+                observedPathsRepo.add(it.toPath())
+                it.notifyAlteration("FILE_CRT")
             }
         }
 
         override fun onFileDelete(file: File?) {
-            file?.let{
+            file?.let {
                 logger.debug("Deletion of file spotted: ${it.toPath()}, removing it from repo")
-                repo.remove(it.toPath())
+                observedPathsRepo.remove(it.toPath())
+                it.notifyAlteration("FILE_DLT")
             }
         }
 
         override fun onDirectoryDelete(directory: File?) {
-            directory?.let{
+            directory?.let {
                 logger.debug("Deletion of directory spotted: ${it.toPath()}, removing it from repo")
-                repo.remove(it.toPath())
+                observedPathsRepo.remove(it.toPath())
+                it.notifyAlteration("DIR_DLT")
             }
         }
     }
 
-    private val dataSetCallBack=object : DataSetCallBack {
+    private val dataSetCallBack = object : DataSetCallBack {
         override fun notify(paths: Collection<Path>, actionType: DataSetCallBack.Companion.ActionType) {
-           callBackFlow.tryEmit(paths to actionType)
+            monitorScope.launch {
+                logger.debug("Notifiyng about triggering of callback")
+                _repoCallBackNotificationFlow.emit(paths to actionType)
+
+            }
             when (actionType) {
                 //todo?? Или все с этим пунктом
                 DataSetCallBack.Companion.ActionType.ADDED -> {
-                    paths.extractTopLevelDirsToCollection(observableDirs)
-                        .let{addObserversForPaths(it)}
+                    paths.findTopLevelDirs(_observableDirs)
+                        .let { newTops ->
+
+                            //Следующий блок должен проверить не является ли что то из новых Топлевел Диров папой старых диров
+                            newTops.forEach { oneTop ->
+                                _observableDirs
+                                    .filter { it.startsWith(oneTop) && it != oneTop }
+                                    .forEach {
+                                        removeObserverForPaths(setOf(it))
+//                                        removePathsFromMonitorScope(setOf(it))
+                                    }
+                            }
+                            _observableDirs.addAll(newTops)
+                            addObserversForPaths(newTops)
+                        }
                 }
                 DataSetCallBack.Companion.ActionType.DELETED -> {
                     removeObserverForPaths(paths)

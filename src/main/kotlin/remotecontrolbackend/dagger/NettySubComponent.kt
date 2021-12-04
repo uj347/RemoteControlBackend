@@ -7,6 +7,8 @@ import dagger.*
 import dagger.multibindings.IntoMap
 import dagger.multibindings.StringKey
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
 import remotecontrolbackend.UserRepo
 import remotecontrolbackend.dagger.NettyMainModule.Companion.NETTY_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.netty_part.NettyConnectionManager
@@ -153,7 +155,7 @@ interface NettyMainModule {
             appCoroutineContext: CoroutineContext
         ): CoroutineContext {
 
-            return appCoroutineContext + Dispatchers.IO
+            return appCoroutineContext + Dispatchers.IO+ SupervisorJob(appCoroutineContext.job)
         }
 
 

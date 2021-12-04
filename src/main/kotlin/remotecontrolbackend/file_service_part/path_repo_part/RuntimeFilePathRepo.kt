@@ -14,7 +14,7 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
         val logger = LogManager.getLogger()
     }
 
-    private var _repository = ConcurrentSkipListSet<Path>()
+    private var _repository = ConcurrentHashMap.newKeySet<Path>()
     private val listenerCallbacks = ConcurrentHashMap<DataSetListener, DataSetCallBack>()
 
 
@@ -26,11 +26,11 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
         listenerCallbacks.remove(listener)
     }
 
-    val repository: ConcurrentSkipListSet<Path>
+    val repository: MutableSet<Path>
         get() = _repository
 
     constructor(initCollection: Collection<Path>) : this() {
-        _repository = ConcurrentSkipListSet<Path>(initCollection)
+        _repository = ConcurrentHashMap.newKeySet<Path> ().also { it.addAll(initCollection) }
     }
 
     //TODO Пропихнуть в  методы триггеринг каллбеков done?!
@@ -52,7 +52,16 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
 
             notifyCallBacks(added, DataSetCallBack.Companion.ActionType.ADDED)
 
-            logger.debug("Added to repo: $added")
+            logger.debug("Added to repo: ${
+                when(added.size>100) {
+                   true-> {
+                       added.toString().substring(0..100)+".....totaly:  ${added.size} elements"
+                   }
+                    false->{
+                        added
+                    }
+                }
+            }  ")
         }
         return changed
     }
@@ -69,7 +78,16 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
         }
         if (changed) {
             notifyCallBacks(removed, DataSetCallBack.Companion.ActionType.DELETED)
-            logger.debug("Removed from repo: $removed")
+            logger.debug("Removed from repo: ${
+                        when(removed.size>100) {
+                            true-> {
+                                removed.toString().substring(0..100)+"....totaly: ${removed.size} elements"
+                            }
+                            false->{
+                                removed
+                            }
+                        }
+                    }")
         }
         return changed
     }

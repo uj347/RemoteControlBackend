@@ -1,7 +1,9 @@
 package remotecontrolbackend.file_service_part.path_list_provider_part
 
 import java.nio.file.Path
+import javax.inject.Provider
 
-interface IPathListProvider {
-    fun provide():Collection<Path>
+fun interface IPathListProvider:Provider<Collection<Path>> {
+
+     override fun get():Collection<Path>
 }

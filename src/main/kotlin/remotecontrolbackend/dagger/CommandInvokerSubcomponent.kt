@@ -8,6 +8,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
 import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
@@ -53,7 +55,7 @@ interface CommandInvokerModule{
         fun provideCommanInvokerCoroutineContext(
             @Named(APP_COROUTINE_CONTEXT_LITERAL) appContext:CoroutineContext
         ):CoroutineContext{
-            return appContext+Dispatchers.IO
+            return appContext+Dispatchers.IO+ SupervisorJob(appContext.job)
         }
 
 
