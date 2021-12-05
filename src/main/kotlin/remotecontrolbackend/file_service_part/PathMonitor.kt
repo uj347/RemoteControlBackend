@@ -2,7 +2,6 @@ package remotecontrolbackend.file_service_part
 
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import jdk.jfr.Name
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -34,15 +33,18 @@ class PathMonitor @AssistedInject constructor(
     @Named(FILESERVICE_COROUTINE_CONTEXT_LITERAL)
     val fileServiceContext: CoroutineContext
 ) : DataSetListener {
-//TODO Приделать поддержку наблюдения за эксептед паф репо для рантайм удаления обсерверов для  ексептед путей , а мб и оставить все как есть
+
     companion object {
         val logger = LogManager.getLogger()
     }
+    init {
+        logger.debug("New pathMonitor creation: ${this.toString()}")
+    }
 
-    //TODO Проверить работает ли это
-    val repoCallBackNotificationFlow: SharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>>
-        get() = _repoCallBackNotificationFlow
-    private val _repoCallBackNotificationFlow: MutableSharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>> =
+
+    val observedRepoCallBackNotificationFlow: SharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>>
+        get() = _observedRepoCallBackNotificationFlow
+    private val _observedRepoCallBackNotificationFlow: MutableSharedFlow<Pair<Collection<Path>, DataSetCallBack.Companion.ActionType>> =
         MutableSharedFlow()
 
     val fileAlterationNotificationFlow: SharedFlow<Pair<Path, String>>
@@ -102,6 +104,7 @@ class PathMonitor @AssistedInject constructor(
     fun launch() {
         logger.debug("PathMonitor $this launched")
         if (!launched) {
+            logger.debug("Proceeding to register this Moniator [$this] as listener for repo[$observedPathsRepo]")
             observedPathsRepo.registerListener(this)
             pathMonitorJob = monitorScope.launch {
                 launch {
@@ -133,8 +136,12 @@ class PathMonitor @AssistedInject constructor(
     }
 
 
-    override fun provideCallBack(): DataSetCallBack {
-        return dataSetCallBack
+    override fun provideCallBack(repoToListen:IFilePathRepo): DataSetCallBack {
+        when (repoToListen){
+            observedPathsRepo->return observedPathsRepoCallBack
+            exceptedPathsRepo->return exceptedPathsRepoCallBack
+            else->throw RuntimeException("You trying to pass me some Unknown Repo")
+        }
     }
 
     /** Очистть репо от несущестующих путей*/
@@ -283,23 +290,37 @@ logger.debug("In finding top lvl dirs with collection:$this \n and target: $targ
         }
     }
 
-    private val dataSetCallBack = object : DataSetCallBack {
+
+    private fun Path.assureNotInExcepted(){
+        if(this.isExcepted()){
+            removeObserverForPaths(setOf(this))
+
+        }
+    }
+
+    private fun Path.isExcepted():Boolean{
+        return this in exceptedPathsRepo||exceptedPathsRepo.any {this.startsWith(it)}
+    }
+
+    private val observedPathsRepoCallBack = object : DataSetCallBack {
         override fun notify(paths: Collection<Path>, actionType: DataSetCallBack.Companion.ActionType) {
             monitorScope.launch {
                 logger.debug("Notifiyng about triggering of callback")
-                _repoCallBackNotificationFlow.emit(paths to actionType)
+                _observedRepoCallBackNotificationFlow.emit(paths to actionType)
 
             }
             when (actionType) {
-                //todo?? Или все с этим пунктом
+
                 DataSetCallBack.Companion.ActionType.ADDED -> {
                     paths.findTopLevelDirs(_observableDirs)
                         .let { newTops ->
 
                             //Следующий блок должен проверить не является ли что то из новых Топлевел Диров папой старых диров
+                            //#2 И так же проверить не находится ли сам паф или его папа в Ексептез репо используя зараене заготовленный метод
                             newTops.forEach { oneTop ->
                                 _observableDirs
                                     .filter { it.startsWith(oneTop) && it != oneTop }
+                                    .filter{!it.isExcepted()}
                                     .forEach {
                                         removeObserverForPaths(setOf(it))
 //                                        removePathsFromMonitorScope(setOf(it))
@@ -322,4 +343,21 @@ logger.debug("In finding top lvl dirs with collection:$this \n and target: $targ
     }
 
 
-}
+        private val exceptedPathsRepoCallBack=object:DataSetCallBack{
+            override fun notify(paths: Collection<Path>, actionType: DataSetCallBack.Companion.ActionType) {
+                when(actionType){
+                DataSetCallBack.Companion.ActionType.ADDED -> {
+                  for(path in observedPathsRepo){
+                      path.assureNotInExcepted()
+
+                  }
+                }
+                else -> {
+                    //Don't worry about anything else
+                }
+
+            }
+            }
+            }
+        }
+

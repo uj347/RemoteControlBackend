@@ -19,7 +19,8 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
 
 
     override fun registerListener(listener: DataSetListener) {
-        listenerCallbacks.put(listener, listener.provideCallBack())
+        logger.debug("Registered listener:[$listener] of type: [${listener::class.simpleName}]")
+        listenerCallbacks.put(listener, listener.provideCallBack(this))
     }
 
     override fun deregisterListener(listener: DataSetListener) {
@@ -49,6 +50,7 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
             }
         }
         if (changed) {
+            logger.debug("Proceeding to callBack Notification with added [$added]")
 
             notifyCallBacks(added, DataSetCallBack.Companion.ActionType.ADDED)
 
@@ -91,6 +93,12 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
         }
         return changed
     }
+    override fun iterator(): Iterator<Path> {
+       return repository.iterator()
+    }
+
+
+
 
     private fun notifyCallBacks(paths: Collection<Path>, datasetAction: DataSetCallBack.Companion.ActionType) {
         for (callBack in listenerCallbacks.values) {

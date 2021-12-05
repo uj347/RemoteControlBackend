@@ -18,12 +18,11 @@ class MockCommandHandler @Inject constructor(commandInvoker: CommandInvoker): Ab
 
     companion object {
         val PASS_TROUGH_STRING="Command passed trough the command handler"
-        val _logger= LogManager.getLogger()
+        val logger= LogManager.getLogger()
     }
-    override val handlerDescription: String
-        get() = NettySubComponent.COMMAND_HANDLER_LITERAL
 
-    override val logger: Logger= _logger
+
+    override val logger: Logger= Companion.logger
 
 
     override fun handlerAdded(ctx: ChannelHandlerContext?) {
@@ -53,11 +52,7 @@ class MockCommandHandler @Inject constructor(commandInvoker: CommandInvoker): Ab
 
              })
          ctx?.fireChannelRead(PASS_TROUGH_STRING)
-//         ctx?.writeAndFlush()
 
-//         if (HttpUtil.getMimeType(msg)!="application/json"){
-//             ctx?.writeAndFlush(DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.BAD_REQUEST))
-//         }
 
      }
     }

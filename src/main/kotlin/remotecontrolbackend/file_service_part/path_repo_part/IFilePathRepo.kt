@@ -4,7 +4,7 @@ import io.netty.util.internal.ConcurrentSet
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
 
-interface IFilePathRepo {
+interface IFilePathRepo:Iterable<Path> {
     fun registerListener(listener: DataSetListener)
     fun deregisterListener(listener: DataSetListener)
     fun get():Collection<Path>

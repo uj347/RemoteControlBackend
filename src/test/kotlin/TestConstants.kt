@@ -1,1 +1,1 @@
-const val TEST_DIRECTORY="j:\\Ujtrash\\Test\\"
+const val TEST_DIRECTORY="c:\\Ujtrash\\Test\\"

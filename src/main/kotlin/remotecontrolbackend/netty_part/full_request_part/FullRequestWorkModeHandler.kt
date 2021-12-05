@@ -8,5 +8,6 @@ import remotecontrolbackend.netty_part.utils.FullRequestChain
 @FullRequestChain
 @NettyScope
 abstract class FullRequestWorkModeHandler:SimpleChannelInboundHandler<FullHttpRequest> (){
-    abstract val handlerDescription:String
+    abstract val handlerQuery:String
+
 }

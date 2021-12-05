@@ -40,8 +40,6 @@ class ConcreteRobotHandler @Inject constructor() : AbstractRobotHandler() {
     @Inject
     lateinit var nettyContext: CoroutineContext
 
-    override val handlerDescription: String
-        get() = ROBOT_HANDLER_LITERAL
 
 
     val moshi = Moshi.Builder().build()

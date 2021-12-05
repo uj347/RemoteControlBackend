@@ -26,15 +26,18 @@ import kotlin.jvm.Throws
 abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
     FullRequestWorkModeHandler() {
     companion object {
-        private val _logger = LogManager.getLogger()
-        val handlerDescription=COMMAND_HANDLER_LITERAL
-    }
+        private val logger = LogManager.getLogger()
+        const val COMMAND_QUERY="command"
 
+
+    }
+    override val handlerQuery= COMMAND_QUERY
+    val handlerDescription= COMMAND_HANDLER_LITERAL
     abstract val logger: Logger
 
     @Throws(IllegalArgumentException::class)
     protected fun FullHttpRequest.extractStrategy(): CommandStrategy {
-        _logger.debug("Extracting Strategy from request: $this, that has METHOD: ${this.method()}")
+        logger.debug("Extracting Strategy from request: $this, that has METHOD: ${this.method()}")
 
         if (this.method() != HttpMethod.PUT &&
             this.method() != HttpMethod.POST &&
@@ -84,10 +87,10 @@ abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
         val setType: Type = Types.newParameterizedType(Set::class.java, SerializableCommand::class.java)
         val adapter = moshi.adapter<Set<SerializableCommand>>(setType)
         val stringRepresentationOfSet = adapter.toJson(commandInvoker.getCachedCommandReferences())
-        _logger.debug("In formGetResponse: stringRepresantation of set is : $stringRepresentationOfSet")
+        logger.debug("In formGetResponse: stringRepresantation of set is : $stringRepresentationOfSet")
         val serializedComRefSet: ByteBuf =
             ByteBufUtil.encodeString(this.alloc(), CharBuffer.wrap(stringRepresentationOfSet), StandardCharsets.UTF_8)
-        _logger.debug("Prduced serialized set of ComRef: $serializedComRefSet")
+        logger.debug("Prduced serialized set of ComRef: $serializedComRefSet")
 
         val response: DefaultFullHttpResponse =
             DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, serializedComRefSet)
@@ -96,7 +99,7 @@ abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
                     it.headers().add(HttpHeaderNames.CONTENT_LENGTH, serializedComRefSet.readableBytes())
                     it.headers().add(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
                 }
-        _logger.debug("Produced GET response: $response")
+        logger.debug("Produced GET response: $response")
         return response
     }
 
@@ -119,7 +122,7 @@ abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
                 var result: Set<SerializableCommand>? = null
 
                 return it.fromJson(this.content().toString(StandardCharsets.UTF_8)).also {
-                    _logger.debug("deserialized commands from incoming request: $it")
+                    logger.debug("deserialized commands from incoming request: $it")
                 } ?: throw RuntimeException("Content can't be deserialized")
             }
     }

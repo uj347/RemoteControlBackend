@@ -18,8 +18,8 @@ import remotecontrolbackend.netty_part.auth_part.MockAuthHandler
 import remotecontrolbackend.netty_part.auth_part.MockUserRepo
 import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
 import remotecontrolbackend.netty_part.TransferEncodingInterceptor
-import remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part.AbstractChunkedRequestRouter
-import remotecontrolbackend.netty_part.chunked_part.chunked_request_handler_part.ConcreteChunkedRequestRouter
+import remotecontrolbackend.netty_part.chunked_part.chunked_request_router_part.AbstractChunkedRequestRouter
+import remotecontrolbackend.netty_part.chunked_part.chunked_request_router_part.ConcreteChunkedRequestRouter
 import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.AbstractRobotHandler
 import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.ConcreteRobotHandler
 import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
@@ -49,6 +49,7 @@ interface NettySubComponent {
         const val CHUNKED_REQUEST_ROUTER_LITERAL = "CHUNKED_REQUEST_ROUTER"
         const val TRANSFER_ENCODING_INTERCEPTOR_LITERAL = "TRANSFER_ENCODING_INTERCEPTOR"
         const val ROBOT_HANDLER_LITERAL = "ROBOT_HANDLER"
+        const val FILE_HANDLER_LITERAL="FILE_HANDLER"
         const val SSL_HANDLER_LITERAL = "SSL_HANDLER"
         const val AUTH_HANDLER_LITERAL = "AUTH_HANDLER"
         const val EXCEPTION_CATCHER_LITERAL = "EXCEPTION_CATCHER"
@@ -228,7 +229,7 @@ interface NettyAuthModule {
 interface NettyFullRequestModesModule {
 
     companion object {
-        const val COMMAND_MODE_LITERAL = "command"
+
 
 
         @NettyScope
@@ -261,7 +262,7 @@ interface NettyFullRequestModesModule {
     @NettyScope
     @Binds
     @IntoMap
-    @StringKey(COMMAND_MODE_LITERAL)
+    @StringKey(AbstractCommandHandler.COMMAND_QUERY)
     fun bindCommandHandlerToFullModeMap(commandHandler: AbstractCommandHandler): FullRequestWorkModeHandler
 
 
@@ -283,13 +284,13 @@ interface NettyFullRequestModesModule {
     @Binds
     @IntoMap
     @StringKey(NettyMainModule.TEST)
-    fun bindMockRequestHandlerIntoMap(mock: MockFullRequestRouter): AbstractFullRequestRouter
+    fun bindMockFullRequestRouterIntoMap(mock: MockFullRequestRouter): AbstractFullRequestRouter
 
     @NettyScope
     @Binds
     @IntoMap
     @StringKey(NettyMainModule.CONCRETE)
-    fun bindConcreteRequestHandlerIntoMap(concreteRequestHandler: ConcreteFullRequestRouter): AbstractFullRequestRouter
+    fun bindConcreteFullRequestRouterIntoMap(concreteRequestHandler: ConcreteFullRequestRouter): AbstractFullRequestRouter
 
 
 }
@@ -297,7 +298,7 @@ interface NettyFullRequestModesModule {
 @Module
 interface NettyChunkedRequestModesModule {
     companion object {
-        const val ROBOT_MODE_LITERAl = "robot"
+
 
 
         @NettyScope
@@ -344,18 +345,18 @@ interface NettyChunkedRequestModesModule {
     @IntoMap
     @StringKey(NettyMainModule.TEST)
     //TODO NB пока только конкрит
-    fun bindMocRobotHabdlerIntoMap(mock: ConcreteRobotHandler): AbstractRobotHandler
+    fun bindMocRobotHandlerIntoMap(mock: ConcreteRobotHandler): AbstractRobotHandler
 
     @NettyScope
     @Binds
     @IntoMap
     @StringKey(NettyMainModule.CONCRETE)
-    fun bindConcreteRobotHabdlerIntoMap(concreteRobotHandler: ConcreteRobotHandler): AbstractRobotHandler
+    fun bindConcreteRobotHandlerIntoMap(concreteRobotHandler: ConcreteRobotHandler): AbstractRobotHandler
 
     @NettyScope
     @Binds
     @IntoMap
-    @StringKey(ROBOT_MODE_LITERAl)
+    @StringKey(AbstractRobotHandler.ROBOT_QUERY)
     fun bindRobotModeHandlerIntoMap(robotHandler: AbstractRobotHandler): ChunkWorkModeHandler
 
 

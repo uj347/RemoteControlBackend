@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.isCacheable
@@ -31,14 +32,14 @@ class ConcreteCommandHandler
 
 
     companion object {
-        val _logger = LogManager.getLogger()
+        val logger = LogManager.getLogger()
     }
 
-    override val handlerDescription: String
-        get() = COMMAND_HANDLER_LITERAL
+
+    override val logger: Logger
+        get() = Companion.logger
 
     //TODO Вот тут нужно бы потестить, слеплено на коленке
-    override val logger = _logger
     val moshi = commandInvoker.commandRepo.moshi
 
     override fun handlerAdded(ctx: ChannelHandlerContext?) {

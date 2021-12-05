@@ -7,5 +7,6 @@ import remotecontrolbackend.netty_part.utils.ChunkedChain
 
 @ChunkedChain
 abstract class ChunkWorkModeHandler:ChannelInboundHandlerAdapter(){
+    abstract val handlerQuery:String
     abstract val handlerDescription:String
 }

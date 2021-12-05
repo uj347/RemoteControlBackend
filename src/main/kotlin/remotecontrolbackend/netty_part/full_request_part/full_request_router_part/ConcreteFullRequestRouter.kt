@@ -19,7 +19,7 @@ class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRoute
 
 
     @Inject
-    lateinit var fullRequestHadlers: Map<String, @JvmSuppressWildcards FullRequestWorkModeHandler>
+    lateinit var fullRequestHandlers: Map<String, @JvmSuppressWildcards FullRequestWorkModeHandler>
 
     @Inject
     lateinit var commandHandler: AbstractCommandHandler
@@ -41,11 +41,11 @@ class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRoute
             val queryStringDecoder = QueryStringDecoder(it.uri())
             val workMode=queryStringDecoder.path().lowercase().substring(1)
             when (workMode) {
-                in fullRequestHadlers -> {
+                in fullRequestHandlers -> {
                     ctx?.let{
-                        val targetHandler=fullRequestHadlers.get(workMode)!!
-                        it.pipeline().addAfter(FULL_REQUEST_ROUTER_LITERAL,targetHandler.handlerDescription ,targetHandler)
-                        logger.debug("Modifying pipeline, adding handler: ${targetHandler.handlerDescription}")
+                        val targetHandler=fullRequestHandlers.get(workMode)!!
+                        it.pipeline().addAfter(FULL_REQUEST_ROUTER_LITERAL,targetHandler.handlerQuery ,targetHandler)
+                        logger.debug("Modifying pipeline, adding handler: ${targetHandler.handlerQuery}")
                         httpMsg.retain()
                         it.fireChannelRead(httpMsg)
                     }

@@ -1,5 +1,6 @@
 package remotecontrolbackend.file_service_part
 
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FilenameUtils
@@ -60,11 +61,8 @@ class FileService(
         get() = _initialized.get()
     private val _initialized = AtomicBoolean(false)
 
-    val pathMonitor: PathMonitor
+    lateinit var pathMonitor: PathMonitor
 
-    private val exceptionPathFileFilter: IOFileFilter
-
-//    private val exceptedDirs=ConcurrentHashMap.newKeySet<File>()
 
     companion object {
         val logger = LogManager.getLogger()
@@ -76,18 +74,18 @@ class FileService(
         observedPathsRepo = repoProvider.get()
         exceptedPathRepo = repoProvider.get()
         logger.debug("In initialization observed repo is: $observedPathsRepo, excepted repo is $exceptedPathRepo")
-        exceptionPathFileFilter = PathRepoBackedFileFilter(exceptedPathRepo).invert()
         pathMonitor = pathMonitorFactory.createFor(observedPathsRepo, exceptedPathRepo)
     }
 
     suspend fun initializeFileService() {
+        logger.debug("In File Service initialization")
         withContext(fileServiceContext) {
             if (!initialized) {
                 if (!dropBoxPath.exists()) {
                     Files.createDirectories(dropBoxPath)
                 }
                 dropBoxPath.extractAllNodes().let {
-                    logger.debug("All extracatedNodes is: $it")
+                    logger.debug("All extracated from dropBox Nodes is: $it")
                     observedPathsRepo.add(*it.toTypedArray())
                 }
 
@@ -105,6 +103,29 @@ class FileService(
         }
     }
 
+    suspend fun reInitializeFileService(){
+        logger.debug("Reinitialization of File Service started")
+        when(initialized){
+
+            //TODO Почему пафМонитор не ребутится
+            true->{
+                logger.debug("Already initialized->complex initialization")
+                fileServiceContext.cancelChildren()
+                pathMonitor.stop()
+                _initialized.set(false)
+                observedPathsRepo=repoProvider.get()
+                exceptedPathRepo=repoProvider.get()
+                pathMonitor=pathMonitorFactory.createFor(observedPathsRepo,exceptedPathRepo)
+                initializeFileService()
+
+            }
+            false->{
+                logger.debug("Not initialized-> simple initialization")
+                initializeFileService()}
+
+        }
+
+    }
     suspend fun additionalPaths(additionalProvider: IPathListProvider) {
         withContext(fileServiceContext) {
             if (initialized) {
@@ -199,9 +220,9 @@ class FileService(
                 this@checkAndSave.checkAndSave(scopeFileName, nextScopeCount)
             } else {
                 val newFilePath = dropBoxPath.resolve(Paths.get(scopeFileName))
-                BufferedOutputStream(FileOutputStream(newFilePath.toFile())).run {
-                    IOUtils.copy(this@checkAndSave, this)
-                    this.flush()
+                BufferedOutputStream(FileOutputStream(newFilePath.toFile())).use {
+                    IOUtils.copy(this@checkAndSave, it)
+                    it.flush()
                     logger.debug("Saved new File to DropBox: $scopeFileName")
                 }
 
@@ -212,22 +233,26 @@ class FileService(
 
     //TODO Понять почему эта хуйнища выкидывает стакОверфлоу
     fun Path.extractAllNodes(): Collection<Path> {
-        logger.debug("Inital path in extract all nodes is: $this and fileversion of this is ${this.toFile()}")
-       return FileUtils.listFilesAndDirs(this.toFile(),TrueFileFilter.TRUE,null)
+       var result= FileUtils.listFiles(this.toFile(),TrueFileFilter.TRUE,null)
             .flatMap { it.extractNode()}
+        result=result.plusElement(this)
+
+        //TODO TestBench
+        return result
 
     }
 
     fun File.extractNode():Collection<Path>{
-return when(this.isDirectory){
+
+val result= when(this.isDirectory){
     true->{
         kotlin.runCatching {
-            FileUtils.listFilesAndDirs(this,TrueFileFilter.TRUE, null)
-                .flatMap{it.extractNode()}
+            FileUtils.listFiles(this,TrueFileFilter.TRUE, null)
+                .flatMap{it.extractNode()}.plusElement(this.toPath())
         }.getOrElse {
-            logger.debug("spotted exception: $it ")
+            logger.debug("spotted exception in ExtractNode: $it ")
             exceptedPathRepo.add(this.toPath())
-            logger.debug("Added to excepted paths: $it")
+            logger.debug("Added to excepted paths: $this because of exception: $it")
             emptySet<Path>()
         }
     }
@@ -238,12 +263,13 @@ return when(this.isDirectory){
            }
            else emptySet<Path>()
        }.getOrElse {
-           logger.debug("spotted exception: $it ")
+           logger.debug("spotted exception in ExtractNode: $it ")
            exceptedPathRepo.add(this.toPath())
-           logger.debug("Added to excepted paths: $this")
+           logger.debug("Added to excepted paths: $this because of exception: ${it}")
            emptySet<Path>() }
     }
 }
+        return result
     }
 
 
