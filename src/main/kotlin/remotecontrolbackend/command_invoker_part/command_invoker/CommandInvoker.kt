@@ -1,11 +1,12 @@
 package remotecontrolbackend.command_invoker_part.command_invoker
 
 
+import com.squareup.moshi.Moshi
 import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import remotecontrolbackend.command_invoker_part.command_hierarchy.*
-import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
+import remotecontrolbackend.command_invoker_part.command_repo.ICommandRepo
 import remotecontrolbackend.dagger.ComInvScope
 import remotecontrolbackend.dagger.CommandInvokerModule.Companion.COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.dagger.CommandInvokerSubcomponent
@@ -25,10 +26,23 @@ class CommandInvoker constructor(
     workDirectory: Path,
     commandInvokerBuilder: CommandInvokerSubcomponent.CommandInvokerBuilder
 ) {
-
-val commandInvokerSubcomponent:CommandInvokerSubcomponent
+    val commandInvokerSubcomponent:CommandInvokerSubcomponent
 private val logger:Logger
-init {
+    @Inject
+    lateinit var commandRepo: ICommandRepo
+    @Inject
+    @Named(COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL)
+    lateinit var invokerCoroutineContext:CoroutineContext
+    @Inject
+    lateinit var moshi: Moshi
+
+    var currentCommandJob: Job? = null
+    var invokerJob: Job? = null
+
+
+    var workQueue: BlockingDeque<Command> = LinkedBlockingDeque()
+
+    init {
        commandInvokerSubcomponent= commandInvokerBuilder.build().also { it.inject(this) }
     logger=LogManager.getLogger()
     }
@@ -44,20 +58,13 @@ init {
             return invokerJob?.isActive ?: false
         }
 
-    @Inject
-    lateinit var commandRepo: CommandRepo
-    var currentCommandJob: Job? = null
-    var invokerJob: Job? = null
-    @Inject
-    @Named(COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL)
-    lateinit var invokerCoroutineContext:CoroutineContext
-    var workQueue: BlockingDeque<Command> = LinkedBlockingDeque()
+
 
 
 
     fun launchCommandInvoker():Job? {
         if (!this.invokerIsRunning) {
-val invokerScope= CoroutineScope(invokerCoroutineContext)
+val invokerScope= CoroutineScope(invokerCoroutineContext+ SupervisorJob(invokerCoroutineContext.job))
             invokerJob = invokerScope.launch (Dispatchers.IO){
                 logger.debug("Inititalizing command invoker")
                 //Инициализация репо
@@ -76,7 +83,7 @@ val invokerScope= CoroutineScope(invokerCoroutineContext)
                                 command?.let { postNonFairCommand(command) }
                             }else {
                                 //Check if command RepoChacheable, if so - addTo REPO
-                                command?.let { repoCaching(command) }
+                                command?.let { checkAndRunRepoCaching(command) }
 
                                 command?.execute(infoToken)
                             }
@@ -90,7 +97,7 @@ val invokerScope= CoroutineScope(invokerCoroutineContext)
             }
         }
 /**Проверить есть ли у класса  аннотация "RepoCacheable"и если есть - добавить в репо*/
-    private suspend fun repoCaching(command: Command){
+    private suspend fun checkAndRunRepoCaching(command: Command){
         if(command !is SerializableCommand){
             return
         }else{
@@ -130,7 +137,7 @@ val invokerScope= CoroutineScope(invokerCoroutineContext)
 
     suspend fun stopCommandInvoker() {
         withContext(Dispatchers.IO){
-            commandRepo.saveChanges()
+            commandRepo.terminalOperation()
             invokerJob?.cancel()
         }
 

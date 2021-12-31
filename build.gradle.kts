@@ -1,12 +1,28 @@
 
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.js.inline.clean.removeDuplicateImports
-import org.jetbrains.kotlin.kapt3.base.Kapt.kapt
+import org.gradle.kotlin.dsl.sqldelight
 
+
+buildscript {
+    repositories {
+
+        mavenCentral()
+        google()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath("com.squareup.sqldelight:gradle-plugin:1.5.3")
+    }
+
+
+
+
+}
 
 plugins {
     kotlin("jvm") version "1.5.31"
     kotlin("kapt") version "1.5.31"
+    id("com.squareup.sqldelight")
 }
 
 group = "me.uj347"
@@ -16,10 +32,24 @@ repositories {
     mavenCentral()
     google()
 }
+sqldelight {
+    this.
+    database("H2Database") {
+        sourceFolders= listOf("sqldelight_h2_db")
+        packageName ="remotecontrolbackend.database"
+        dialect = "mysql"
+    }
+
+}
+
+
+
 
 dependencies {
+    implementation("com.h2database:h2:2.0.202")
+    implementation ("mysql:mysql-connector-java:8.0.26")
+    implementation ("com.squareup.sqldelight:jdbc-driver:1.5.3")
     testImplementation(kotlin("test"))
-
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("org.jmdns:jmdns:3.5.7")
@@ -39,8 +69,7 @@ dependencies {
     implementation("io.github.hakky54:sslcontext-kickstart-for-pem:7.0.2")
     implementation("org.apache.commons:commons-compress:1.21")
     implementation("org.mockito:mockito-core:4.1.0")
-
-
+    implementation("com.zaxxer:HikariCP:5.0.0")
 }
 
 tasks.test {
@@ -62,6 +91,6 @@ sourceSets {
 
 
 
-tasks.withType<KotlinCompile>() {
+tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }

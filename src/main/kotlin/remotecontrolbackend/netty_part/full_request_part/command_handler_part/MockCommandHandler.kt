@@ -7,12 +7,11 @@ import io.netty.handler.codec.http.*
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
-import remotecontrolbackend.dagger.NettySubComponent
-import remotecontrolbackend.netty_part.utils.FullRequestChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 import java.nio.charset.Charset
 import javax.inject.Inject
 
-@FullRequestChain
+@SpecificChain(chainType = SpecificChain.ChainType.FULLREQUEST)
 @Sharable
 class MockCommandHandler @Inject constructor(commandInvoker: CommandInvoker): AbstractCommandHandler(commandInvoker){
 

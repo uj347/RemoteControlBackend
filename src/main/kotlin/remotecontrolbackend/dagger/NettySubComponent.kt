@@ -1,8 +1,7 @@
 package remotecontrolbackend.dagger
 
 import APP_COROUTINE_CONTEXT_LITERAL
-import IS_TEST_LITERAL
-import WORK_DIR_LITERAL
+import ROOT_DIR_LITERAL
 import dagger.*
 import dagger.multibindings.IntoMap
 import dagger.multibindings.StringKey
@@ -20,15 +19,15 @@ import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
 import remotecontrolbackend.netty_part.TransferEncodingInterceptor
 import remotecontrolbackend.netty_part.chunked_part.chunked_request_router_part.AbstractChunkedRequestRouter
 import remotecontrolbackend.netty_part.chunked_part.chunked_request_router_part.ConcreteChunkedRequestRouter
+import remotecontrolbackend.netty_part.chunked_part.file_handler_part.AbstractFileHandler
+import remotecontrolbackend.netty_part.chunked_part.file_handler_part.ConcreteFileHandler
 import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.AbstractRobotHandler
 import remotecontrolbackend.netty_part.chunked_part.robot_handler_part.ConcreteRobotHandler
 import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.ConcreteCommandHandler
-import remotecontrolbackend.netty_part.full_request_part.command_handler_part.MockCommandHandler
 import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.AbstractFullRequestRouter
 import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.ConcreteFullRequestRouter
-import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.MockFullRequestRouter
 import java.nio.file.Path
 import javax.inject.Named
 import javax.inject.Scope
@@ -86,7 +85,7 @@ interface NettySSLModule {
     @StringKey(SSL_DIRECTORY_LITERAL)
     @IntoMap
     @Binds
-    abstract fun provideSslDirectoryPathIntoMap(@Named(SSL_DIRECTORY_LITERAL) sslDir: Path): Path
+    fun provideSslDirectoryPathIntoMap(@Named(SSL_DIRECTORY_LITERAL) sslDir: Path): Path
 
     companion object {
         const val SERVER_SSL_PATH_LITERAL = "SERVER_SSL_PATH"
@@ -100,7 +99,7 @@ interface NettySSLModule {
         @NettyScope
         @Named(SSL_DIRECTORY_LITERAL)
         @Provides
-        fun provideSslDirectoryPath(@Named(WORK_DIR_LITERAL) workDir: Path): Path {
+        fun provideSslDirectoryPath(@Named(ROOT_DIR_LITERAL) workDir: Path): Path {
             return workDir.resolve("SSL")
         }
 
@@ -143,8 +142,6 @@ interface NettySSLModule {
 @Module
 interface NettyMainModule {
     companion object {
-        const val TEST = "TEST"
-        const val CONCRETE = "CONCRETE"
         const val NETTY_COROUTINE_CONTEXT_LITERAL = "NettyCoroutineContext"
 
 
@@ -165,62 +162,16 @@ interface NettyMainModule {
 
 @Module
 interface NettyAuthModule {
-    companion object {
-        @NettyScope
-        @Provides
-        fun provideAuthH(
-            map: Map<String, @JvmSuppressWildcards AbstractAuthHandler>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractAuthHandler {
-            when (isTest) {
-                true -> return map.get(NettyMainModule.TEST)!!
-                false -> return map.get(NettyMainModule.CONCRETE)!!
-            }
-        }
-
-
-        @Provides
-        @NettyScope
-        fun provideUserRepo(
-            map: Map<String, @JvmSuppressWildcards UserRepo>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): UserRepo {
-            when (isTest) {
-                true -> return map.get(NettyMainModule.TEST)!!
-                false -> return map.get(NettyMainModule.CONCRETE)!!
-            }
-        }
-    }
-
-
+    companion object {}
     @NettyScope
     @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.TEST)
-    fun bindMockAuthH(mockAuthHandler: MockAuthHandler): AbstractAuthHandler
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.CONCRETE)
-    //TODO Осторожно только моки реализованны на данный момент
-
     fun bindConcreteAuthH(concreteAuthHandler: MockAuthHandler): AbstractAuthHandler
 
 
     @NettyScope
     @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.CONCRETE)
-    //TODO Осторожно только моки реализованны на данный момент
     fun bindConcreteUserRepo(mockUserRepo: MockUserRepo): UserRepo
 
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.TEST)
-    //TODO Осторожно только моки реализованны на данный момент
-    fun bindMockUserRepo(mockUserRepo: MockUserRepo): UserRepo
 
 }
 
@@ -228,36 +179,7 @@ interface NettyAuthModule {
 @Module
 interface NettyFullRequestModesModule {
 
-    companion object {
-
-
-
-        @NettyScope
-        @Provides
-        fun provideCommandH(
-            map: Map<String, @JvmSuppressWildcards AbstractCommandHandler>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractCommandHandler {
-            when (isTest) {
-                true -> return map.get(NettyMainModule.TEST)!!
-                false -> return map.get(NettyMainModule.CONCRETE)!!
-            }
-        }
-
-        @Provides
-        @NettyScope
-        fun provideFullRequestRouter(
-            map: Map<String, @JvmSuppressWildcards AbstractFullRequestRouter>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractFullRequestRouter {
-            when (isTest) {
-                true -> return map.get(NettyMainModule.TEST)!!
-                false -> return map.get(NettyMainModule.CONCRETE)!!
-            }
-        }
-
-
-    }
+    companion object {}
 
     @NettyScope
     @Binds
@@ -268,96 +190,42 @@ interface NettyFullRequestModesModule {
 
     @NettyScope
     @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.TEST)
-    fun bindMockCommandHandlerIntoMap(mockCommandHandler: MockCommandHandler): AbstractCommandHandler
-
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.CONCRETE)
     fun bindConcreteCommandHandlerIntoMap(concreteCommandHandler: ConcreteCommandHandler): AbstractCommandHandler
 
 
     @NettyScope
     @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.TEST)
-    fun bindMockFullRequestRouterIntoMap(mock: MockFullRequestRouter): AbstractFullRequestRouter
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.CONCRETE)
     fun bindConcreteFullRequestRouterIntoMap(concreteRequestHandler: ConcreteFullRequestRouter): AbstractFullRequestRouter
-
-
 }
 
 @Module
 interface NettyChunkedRequestModesModule {
-    companion object {
-
-
-
-        @NettyScope
-        @Provides
-        fun provideRobotHandler(
-            map: Map<String, @JvmSuppressWildcards AbstractRobotHandler>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractRobotHandler {
-            when (isTest) {
-                true -> return map.get(NettyMainModule.TEST)!!
-                false -> return map.get(NettyMainModule.CONCRETE)!!
-            }
-        }
-
-        @Provides
-        @NettyScope
-        fun provideChunkedRequestRouter(
-            map: Map<String, @JvmSuppressWildcards AbstractChunkedRequestRouter>,
-            @Named(IS_TEST_LITERAL) isTest: Boolean
-        ): AbstractChunkedRequestRouter {
-            when (isTest) {
-                true -> return map.get(NettyMainModule.TEST)!!
-                false -> return map.get(NettyMainModule.CONCRETE)!!
-            }
-        }
-
-    }
+    companion object { }
+    @NettyScope
+    @Binds
+    fun bindConcreteChunkedRouter(concreteChunkedRouter: ConcreteChunkedRequestRouter): AbstractChunkedRequestRouter
 
     @NettyScope
     @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.TEST)
-    //TODO NB пока только конкрит
-    fun bindMockChunkedRouterIntoMap(mock: ConcreteChunkedRequestRouter): AbstractChunkedRequestRouter
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.CONCRETE)
-    fun bindConcreteChunkedRouterIntoMap(concreteChunkedRouter: ConcreteChunkedRequestRouter): AbstractChunkedRequestRouter
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.TEST)
-    //TODO NB пока только конкрит
-    fun bindMocRobotHandlerIntoMap(mock: ConcreteRobotHandler): AbstractRobotHandler
-
-    @NettyScope
-    @Binds
-    @IntoMap
-    @StringKey(NettyMainModule.CONCRETE)
-    fun bindConcreteRobotHandlerIntoMap(concreteRobotHandler: ConcreteRobotHandler): AbstractRobotHandler
+    fun bindConcreteRobotHandler(concreteRobotHandler: ConcreteRobotHandler): AbstractRobotHandler
 
     @NettyScope
     @Binds
     @IntoMap
     @StringKey(AbstractRobotHandler.ROBOT_QUERY)
     fun bindRobotModeHandlerIntoMap(robotHandler: AbstractRobotHandler): ChunkWorkModeHandler
+
+
+    @NettyScope
+    @Binds
+    fun bindConcreteFileHandlerIntoMap(concreteFileHandler: ConcreteFileHandler): AbstractFileHandler
+
+    @NettyScope
+    @Binds
+    @IntoMap
+    @StringKey(AbstractFileHandler.FILE_QUERY)
+    fun bindFileModeHandlerIntoMap(fileHandler: AbstractFileHandler): ChunkWorkModeHandler
+
 
 
 }

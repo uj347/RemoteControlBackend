@@ -1,14 +1,13 @@
 package remotecontrolbackend.dagger
 
 import APP_COROUTINE_CONTEXT_LITERAL
-import WORK_DIR_LITERAL
+import ROOT_DIR_LITERAL
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
-import jdk.jfr.Name
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
@@ -17,7 +16,7 @@ import remotecontrolbackend.dagger.FileServiceModule.Companion.FILESERVICE_COROU
 import remotecontrolbackend.file_service_part.FileService
 import remotecontrolbackend.file_service_part.PathMonitor
 import remotecontrolbackend.file_service_part.path_repo_part.IFilePathRepo
-import remotecontrolbackend.file_service_part.path_repo_part.RuntimeFilePathRepo
+import remotecontrolbackend.file_service_part.path_repo_part.DbBackedFilePathRepo
 import java.nio.file.Path
 import javax.inject.Named
 import javax.inject.Provider
@@ -43,7 +42,8 @@ fun getCoroutineContext():CoroutineContext
 @Module
 interface FileServiceModule{
 //TODO Пока без выбора, мб позже что то придумаю с другими имплементациями пафРепо
-
+@Binds
+fun bindFilePathRepo(dbBackedFilePathRepo: DbBackedFilePathRepo):IFilePathRepo
 
 
     companion object{
@@ -57,10 +57,6 @@ interface FileServiceModule{
     const val FILESERVICE_COROUTINE_CONTEXT_LITERAL="FILESERVICE_COROUTINE_CONTEXT"
 
 
-        @Provides
-        fun bindFilePathRepo():IFilePathRepo{
-            return RuntimeFilePathRepo()
-        }
 
 
 @FileServiceScope
@@ -72,7 +68,7 @@ interface FileServiceModule{
     @FileServiceScope
     @Provides
     @Named(FILE_SERVICE_DIRECTORY_LITERAL)
-    fun provideFileServiceDirPath(@Named(WORK_DIR_LITERAL)workDirPath:Path):Path{
+    fun provideFileServiceDirPath(@Named(ROOT_DIR_LITERAL)workDirPath:Path):Path{
         return workDirPath.resolve(FILE_SERVICE_DIRECTORY_NAME)
     }
 
@@ -92,7 +88,8 @@ interface PathMonitorFactory{
         const val OBSERVED_PATH_REPO_LITERAL="OBSERVED_PATH_REPO"
         const val EXCEPTED_PATH_REPO_LITERAL="EXCEPTED_PATH_REPO"
     }
-    fun createFor(@Assisted(OBSERVED_PATH_REPO_LITERAL) observedPathRepo: IFilePathRepo, @Assisted (EXCEPTED_PATH_REPO_LITERAL)exceptedPathRepo: IFilePathRepo):PathMonitor
+    fun createFor(@Assisted(OBSERVED_PATH_REPO_LITERAL) observedPathRepo: IFilePathRepo,
+                  @Assisted (EXCEPTED_PATH_REPO_LITERAL)exceptedPathRepo: IFilePathRepo):PathMonitor
 }
 
 

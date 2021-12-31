@@ -5,6 +5,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
 import remotecontrolbackend.robot.RobotManager
 import javax.inject.Named
 import javax.inject.Scope
@@ -33,7 +35,7 @@ interface RobotManagerModule{
             @Named(APP_COROUTINE_CONTEXT_LITERAL)
             appCoroutineContext: CoroutineContext
         ): CoroutineContext {
-            return appCoroutineContext+ Dispatchers.IO
+            return appCoroutineContext+ Dispatchers.IO+ SupervisorJob(appCoroutineContext.job)
         }
     }
 }

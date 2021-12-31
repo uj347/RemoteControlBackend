@@ -7,6 +7,7 @@ import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.command_invoker_part.command_repo.createReference
 import java.nio.file.Paths
 import kotlin.io.path.exists
+import kotlin.test.assertEquals
 
 class CommandInvokerTests {
 
@@ -17,7 +18,7 @@ class CommandInvokerTests {
     val testCompiledCommandsDir=testRepoPath.resolve(COMPILED_COMMANDS_DIR)
     val testDescription="TESTDESCRIPTION"
 
-    var testCounter=0;
+    var testCounter=0
     lateinit var commandInvoker: CommandInvoker
 
     @Before
@@ -27,12 +28,12 @@ class CommandInvokerTests {
             .builder()
             .setWorkDirectory(testPath)
             .setPort(34444)
-            .isTestRun(true)
              .isSSLEnabled(false)
+             .dbPassword(TEST_PSWD)
              .isAuthEnabled(false)
             .buildMainComponent()
             .getCommandInvoker()
-
+        testCounter=0
     }
 
     @After
@@ -52,7 +53,7 @@ class CommandInvokerTests {
             assert(invokerJob!!.isActive)
             assert(commandInvoker.invokerIsRunning)
             delay(3300)
-            assert(invokerJob!!.isActive)
+            assert(invokerJob.isActive)
             assert(commandInvoker.invokerIsRunning)
             commandInvoker.stopCommandInvoker()
             assert(!commandInvoker.invokerIsRunning)
@@ -140,16 +141,16 @@ class CommandInvokerTests {
 
             commandInvoker.postFairCommand(object : Command {
                 override suspend fun execute(infoToken: Map<String, Any>) {
+                    delay(100)
                     testCounter=1
-                    delay(50)
                 }
                 override var description: String?=testDescription+1
             })
 
             commandInvoker.postFairCommand(object : Command {
                 override suspend fun execute(infoToken: Map<String, Any>) {
+                    delay(100)
                     testCounter=2
-                    delay(50)
                 }
                 override var description: String?=testDescription+2
             })
@@ -157,19 +158,19 @@ class CommandInvokerTests {
             commandInvoker.postNonFairCommand(object : Command {
                 override suspend fun execute(infoToken: Map<String, Any>) {
                     testCounter=3
-                    delay(50)
+                    delay(100)
                 }
                 override var description: String?=testDescription+3
             })
-
+            assertEquals(0,testCounter)
             val invokerJob=commandInvoker.launchCommandInvoker()
 
-            delay(10)
-            assert(testCounter==3)
-            delay(50)
-            assert(testCounter==1)
-            delay(50)
-            assert(testCounter==2)
+            delay(40)
+            assertEquals(3,testCounter)
+            delay(220)
+            assertEquals(1,testCounter)
+            delay(330)
+            assertEquals(2,testCounter)
 
 
             commandInvoker.stopCommandInvoker()
@@ -202,12 +203,13 @@ class CommandInvokerTests {
                //TODO Подумать что тут можно сделать
 
            assert(commandInvoker.commandRepo.isInitialized)
-           val repoPointerMapSize=commandInvoker.commandRepo.pointerMap?.size
+           val repoPointerMapSize=commandInvoker.commandRepo.getAllReferences().forEach {
+               println("Next comRef v from repo is $it")
+           }
 
-           assert(repoPointerMapSize!=null)
-           assert(repoPointerMapSize!! >0)
+//           assert(repoPointerMapSize!! >0)
            val batCommandReference=batCommand.createReference()
-           assert(commandInvoker.commandRepo.pointerMap!!.contains(batCommandReference))
+           assert(commandInvoker.commandRepo.getAllReferences().contains(batCommandReference))
 
            assert (true)
            commandInvoker.stopCommandInvoker()

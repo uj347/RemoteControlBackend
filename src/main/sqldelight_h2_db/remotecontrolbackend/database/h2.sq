@@ -1,0 +1,41 @@
+initIfNotExistsCacheCommandRepo:
+CREATE TABLE IF NOT EXISTS cached_command (
+   reference JSON NOT NULL,
+  serialized_command JSON NOT NULL,
+  PRIMARY KEY (reference),
+  UNIQUE (reference)
+);
+
+insertOrUpdate:
+INSERT INTO cached_command (reference,serialized_command)
+VALUES (?,?)
+ON DUPLICATE KEY UPDATE serialized_command=VALUES(serialized_command);
+
+
+deleteByRef:
+DELETE FROM cached_command WHERE reference = ?;
+
+selectSerializedCommand:
+SELECT * FROM cached_command WHERE reference=?;
+
+selectAll:
+SELECT * FROM cached_command;
+
+selectAllReferences:
+SELECT reference FROM cached_command;
+
+
+createIfNotExistsPathRepo:
+CREATE TABLE IF NOT EXISTS path (
+   filePath VARCHAR(256) NOT NULL,
+  PRIMARY KEY (filePath)
+);
+
+selectAllPaths:
+SELECT * FROM path;
+
+deletePath:
+DELETE FROM path WHERE filePath = ?;
+
+insertIngnoringExistence:
+INSERT IGNORE INTO path (filePath) VALUES(?);

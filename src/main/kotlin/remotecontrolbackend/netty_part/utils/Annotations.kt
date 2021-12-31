@@ -1,13 +1,9 @@
 package remotecontrolbackend.netty_part.utils
-
-
 @Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.CLASS)
-annotation class ChunkedChain
+annotation class SpecificChain(
+    val chainType:ChainType=ChainType.NOT_SPECIFIED
+){
 
+enum class ChainType{CHUNKED,FULLREQUEST,NOT_SPECIFIED}
 
-
-
-@Retention(AnnotationRetention.RUNTIME)
-@Target(AnnotationTarget.CLASS)
-annotation class FullRequestChain
+}

@@ -17,14 +17,14 @@ class ZipStreamer (private val context:CoroutineContext, val pipeBuffSize:Int=81
    @Inject constructor(@Named(FILESERVICE_COROUTINE_CONTEXT_LITERAL)context:CoroutineContext):this(context,8128,CompsressionLevel.STORED)
 
 
-    //Todo переделатьт ьбез эксплисит джоба
+
 private val scope:CoroutineScope
 init{
     scope= CoroutineScope(context+ SupervisorJob(context.job))
 }
 
 
-    fun zipThisFile(file: File):Pair<InputStream,Job>{
+    fun zipThisFiles(files: Collection<File>):Pair<InputStream,Job>{
         val pipeOut=PipedOutputStream()
         val zipJob=scope.launch(
             Dispatchers.IO,
@@ -39,7 +39,9 @@ init{
              }
                 zipStream.setUseZip64(Zip64Mode.Always)
                 zipStream.setLevel(compsressionInt)
-                toZip(zipStream, file, file.name)
+                for(file in files) {
+                    toZip(zipStream, file, file.name)
+                }
                 zipStream.flush()
                 zipStream.finish()
             }
@@ -54,7 +56,6 @@ init{
             DEFLATED,
             DEFAULT
         }
-
 
 
         private fun toZip(zipStream: ZipArchiveOutputStream, file: File, fileName: String) {

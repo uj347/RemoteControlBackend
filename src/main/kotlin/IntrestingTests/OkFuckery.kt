@@ -15,14 +15,14 @@ import kotlin.io.path.createFile
 fun main(){
 
    runBlocking{
-       val largeBooba= File("J:\\preparedForTestingSSL")
+       val largeBooba= setOf(File("J:\\preparedForTestingSSL"))
        supervisorScope {
        val storedZipper=ZipStreamer(this.coroutineContext)
            val deflZipper=ZipStreamer(this.coroutineContext, compressionLevel = ZipStreamer.Companion.CompsressionLevel.DEFLATED)
            val deflPath=Paths.get("j:\\Ujtrash\\zipLvls\\defl.zip")
            val storedPath= Paths.get("j:\\Ujtrash\\zipLvls\\stored.zip")
-       ZipConsumer(deflZipper.zipThisFile(largeBooba),deflPath).start()
-           ZipConsumer(storedZipper.zipThisFile(largeBooba),storedPath).start()
+       ZipConsumer(deflZipper.zipThisFiles(largeBooba),deflPath).start()
+           ZipConsumer(storedZipper.zipThisFiles(largeBooba),storedPath).start()
        }
 
 //       zipper.zipScope.coroutineContext.job.invokeOnCompletion { this.cancel() }

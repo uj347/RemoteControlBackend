@@ -1,11 +1,10 @@
 package remotecontrolbackend.netty_part.chunked_part.robot_handler_part
 
-import remotecontrolbackend.dagger.NettySubComponent
 import remotecontrolbackend.dagger.NettySubComponent.Companion.ROBOT_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.chunked_part.ChunkWorkModeHandler
-import remotecontrolbackend.netty_part.utils.ChunkedChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 
-@ChunkedChain
+@SpecificChain(SpecificChain.ChainType.CHUNKED)
 abstract class AbstractRobotHandler:ChunkWorkModeHandler(){
 companion object{
     const val ROBOT_QUERY="robot"

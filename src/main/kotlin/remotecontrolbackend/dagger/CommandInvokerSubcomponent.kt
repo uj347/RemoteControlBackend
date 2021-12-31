@@ -4,6 +4,7 @@ import APP_COROUTINE_CONTEXT_LITERAL
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
@@ -15,7 +16,9 @@ import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.command_invoker_part.command_hierarchy.CommandReference
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommandV2
-import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
+import remotecontrolbackend.command_invoker_part.command_repo.BarbarianCommandRepo
+import remotecontrolbackend.command_invoker_part.command_repo.DbBackedCommandRepo
+import remotecontrolbackend.command_invoker_part.command_repo.ICommandRepo
 import remotecontrolbackend.dagger.CommandInvokerModule.Companion.COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL
 import remotecontrolbackend.moshi.*
 import java.lang.reflect.Type
@@ -28,7 +31,7 @@ import kotlin.coroutines.CoroutineContext
 @ComInvScope
 @Subcomponent(modules = [CommandInvokerModule::class])
 interface CommandInvokerSubcomponent {
-    fun getRepo():CommandRepo
+    fun getRepo():BarbarianCommandRepo
     fun getMoshi():Moshi
     fun getPointerMapAdapter(): JsonAdapter<Map<CommandReference, Path>>
     fun getInvoker():CommandInvoker
@@ -44,9 +47,14 @@ interface CommandInvokerSubcomponent {
 
 @Module
 interface CommandInvokerModule{
+    @ComInvScope
+    @Binds
+    fun bindDbRepo(dbRepo:DbBackedCommandRepo):ICommandRepo
+
     companion object{
         const val COMMAND_CLASS_MAP_LITERAL="COMMAND_CLASS_MAP"
         const val COMMAND_INVOKER_COROUTINE_CONTEXT_LITERAL="COMMAND_INVOKER_COROUTINE_CONTEXT"
+
 
 
         @ComInvScope
@@ -66,7 +74,6 @@ interface CommandInvokerModule{
             return Moshi.Builder()
                 .add(serializableCommandToMapAdapter)
                 .add(PathAdapter())
-                .add(ComRefStringAdapter())
                 .build()
 
         }

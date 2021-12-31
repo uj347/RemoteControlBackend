@@ -12,8 +12,7 @@ import remotecontrolbackend.dagger.NettySubComponent.Companion.HTTP_AGGREGATOR_L
 import remotecontrolbackend.dagger.NettySubComponent.Companion.HTTP_CODEC_LITERAL
 import remotecontrolbackend.netty_part.chunked_part.chunked_request_router_part.AbstractChunkedRequestRouter
 import remotecontrolbackend.netty_part.full_request_part.full_request_router_part.AbstractFullRequestRouter
-import remotecontrolbackend.netty_part.utils.ChunkedChain
-import remotecontrolbackend.netty_part.utils.FullRequestChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 import javax.inject.Inject
 import kotlin.reflect.full.hasAnnotation
 
@@ -33,13 +32,6 @@ class TransferEncodingInterceptor @Inject constructor() : ChannelInboundHandlerA
     companion object {
         val logger = LogManager.getLogger()
         val handlerDescription = TRANSFER_ENCODING_INTERCEPTOR_LITERAL
-
-//        val handlersToRemoveForChunked = setOf<String>(
-//            HTTP_AGGREGATOR_LITERAL,
-//            FULL_REQUEST_ROUTER_LITERAL
-//        )
-
-
     }
 
     val handlerDescription
@@ -48,97 +40,79 @@ class TransferEncodingInterceptor @Inject constructor() : ChannelInboundHandlerA
 
     override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
         msg?.let { message ->
-            if (message is HttpRequest) {
-                logger.debug("Chunked interceptor received request: $message")
+            if (message is DefaultHttpRequest) {
+                logger.debug("Interceptor received request: $message")
                 if (HttpUtil.isTransferEncodingChunked(message)) {
-
                     logger.debug("Encoding of msg is CHUNKED, interceptor is reconfiguring pipeline")
-                    ctx?.let { context ->
-                        val pipeIter = context.pipeline().iterator()
-                        var hasChunkedRouter = false
-                        while (pipeIter.hasNext()) {
-
-                            val nextHandlerEntry = pipeIter.next()
-                            logger.debug("In Pipeline iterator chekkin ${nextHandlerEntry.value::class.simpleName}")
-
-                            val handlerIsForFullChain = nextHandlerEntry.value::class.hasAnnotation<FullRequestChain>()
-
-                            if (nextHandlerEntry.value is AbstractChunkedRequestRouter) {
-                                hasChunkedRouter = true
-                            }
-
-                            if (handlerIsForFullChain || (nextHandlerEntry.value is HttpObjectAggregator)) {
-                                logger.debug(
-                                    "Removing FullChainHandler of class " +
-                                            "${nextHandlerEntry.value::class.simpleName} from the pipeline "
-                                )
-                                pipeIter.remove()
-                            }
-                        }
-
-                        if (!hasChunkedRouter) {
-                            context.pipeline().addAfter(
-                                TRANSFER_ENCODING_INTERCEPTOR_LITERAL,
-                                CHUNKED_REQUEST_ROUTER_LITERAL,
-                                chunnkedRequestRouter
-                            )
-                        }
-                        logger.debug("Firing read on the chunked-modified pipeline")
-                        //Раньше здесь было обращение к пайплайну в целом
-                        context.fireChannelRead(message)
-                    }
-                } else {
+                    ctx?.sanitizeFromChainSpecificHandlers()
+                    ctx?.customizeToChunked()
+                    logger.debug("Firing read on the chunked-modified pipeline")
+                    ctx?.fireChannelRead(message)
+                    } else {
                     logger.debug("Encoding of msg is NOT-CHUNKED, interceptor is reconfiguring pipeline")
-                    ctx?.let { context ->
-                        val pipeIter = context.pipeline().iterator()
-                        var hasFullRouter = false
-                        var hasAggregator = false
-                        while (pipeIter.hasNext()) {
-
-                            val nextHandlerEntry = pipeIter.next()
-                            logger.debug("In Pipeline iterator chekkin ${nextHandlerEntry.value::class.simpleName}")
-
-                            val handlerIsForChunkChain = nextHandlerEntry.value::class.hasAnnotation<ChunkedChain>()
-
-                            if (nextHandlerEntry.value is AbstractFullRequestRouter) {
-                                hasFullRouter = true
-                            }
-                            if (nextHandlerEntry.value is HttpObjectAggregator) {
-                                hasAggregator = true
-                            }
-
-                            if (handlerIsForChunkChain) {
-                                logger.debug(
-                                    "Removing ChunkedHandler of class " +
-                                            "${nextHandlerEntry.value::class.simpleName} from the pipeline "
-                                )
-                                pipeIter.remove()
-                            }
-                        }
-
-                        if (!hasFullRouter) {
-                            context.pipeline().addAfter(
-                                TRANSFER_ENCODING_INTERCEPTOR_LITERAL,
-                                fullRequestRouter.handlerDescription,
-                                fullRequestRouter
-                            )
-                        }
-                        if (!hasAggregator) {
-                            context.pipeline().addAfter(
-                                HTTP_CODEC_LITERAL,
-                                HTTP_AGGREGATOR_LITERAL,
-                                HttpObjectAggregator(Int.MAX_VALUE)
-                            )
-                        }
-
+                    ctx?.let { context->
+                       context.sanitizeFromChainSpecificHandlers()
+                        context.customizeToFullRequest()
                         logger.debug("Firing channeel read in FullRequest-configured pipeline")
                         context.fireChannelRead(message)
                     }
                 }
             } else {
-                logger.debug("Passing NON HTTP-REQUEST message trough without modification of pipeline")
+                logger.debug("Passing NON HTTP-REQUEST message trough without modification of pipeline, " +
+                        "\n msg type is ${message::class.simpleName?:"NULL!!!!!!"}" +
+                        "\n msg is EmptyLastContent: ${message is LastHttpContent}")
                 ctx?.fireChannelRead(message)
             }
         }
     }
+
+    fun ChannelHandlerContext.sanitizeFromChainSpecificHandlers(){
+        val pipeIter =pipeline().iterator()
+        while (pipeIter.hasNext()){
+            val nextHandler=pipeIter.next().value
+            if(nextHandler::class.hasAnnotation<SpecificChain>()){
+                logger.debug("Pipeline sanitation, removing handler: [${nextHandler::class.simpleName}]")
+            pipeline().remove(nextHandler)
+            }
+        }
+    }
+
+    fun ChannelHandlerContext.customizeToFullRequest(){
+        logger.debug("Customizing pipeline to Full request mode")
+
+        pipeline().addAfter(
+            TRANSFER_ENCODING_INTERCEPTOR_LITERAL,
+            AnnotatedHttpAgregator.handlerDescription,
+            AnnotatedHttpAgregator(Int.MAX_VALUE)
+            )
+
+        pipeline().addAfter(
+                AnnotatedHttpAgregator.handlerDescription,
+                fullRequestRouter.handlerDescription,
+                fullRequestRouter
+            )
+
+
+
+        logger.debug("Full-request customization of the pipeline finished\nCurrent pipeine is [${pipeline()}]")
+
+    }
+
+    fun ChannelHandlerContext.customizeToChunked(){
+       logger.debug("Customizing pipeline to Chunked mode")
+        pipeline().addAfter(
+            TRANSFER_ENCODING_INTERCEPTOR_LITERAL,
+            CHUNKED_REQUEST_ROUTER_LITERAL,
+            chunnkedRequestRouter
+        )
+    }
 }
+
+@SpecificChain(SpecificChain.ChainType.FULLREQUEST)
+class AnnotatedHttpAgregator(maxContentLength:Int,
+                             closeOnExpectationFailed:Boolean=false)
+    :HttpObjectAggregator(maxContentLength,closeOnExpectationFailed){
+        companion object{
+        val handlerDescription= HTTP_AGGREGATOR_LITERAL
+        }
+    }

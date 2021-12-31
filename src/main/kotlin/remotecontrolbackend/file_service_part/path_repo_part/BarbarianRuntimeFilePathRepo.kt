@@ -7,8 +7,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentSkipListSet
 import javax.inject.Inject
 
-@FileServiceScope
-class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
+
+class BarbarianRuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
 
     companion object {
         val logger = LogManager.getLogger()
@@ -17,6 +17,9 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
     private var _repository = ConcurrentHashMap.newKeySet<Path>()
     private val listenerCallbacks = ConcurrentHashMap<DataSetListener, DataSetCallBack>()
 
+
+    val repository: MutableSet<Path>
+        get() = _repository
 
     override fun registerListener(listener: DataSetListener) {
         logger.debug("Registered listener:[$listener] of type: [${listener::class.simpleName}]")
@@ -27,11 +30,13 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
         listenerCallbacks.remove(listener)
     }
 
-    val repository: MutableSet<Path>
-        get() = _repository
-
     constructor(initCollection: Collection<Path>) : this() {
         _repository = ConcurrentHashMap.newKeySet<Path> ().also { it.addAll(initCollection) }
+    }
+
+    override fun initialize() {
+        println("BARBARIAN IN ACTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        //No initialization needed
     }
 
     //TODO Пропихнуть в  методы триггеринг каллбеков done?!
@@ -97,8 +102,10 @@ class RuntimeFilePathRepo @Inject constructor() : IFilePathRepo {
        return repository.iterator()
     }
 
-
-
+    override fun terminate() {
+    listenerCallbacks.clear()
+    //Nothing to terminate
+    }
 
     private fun notifyCallBacks(paths: Collection<Path>, datasetAction: DataSetCallBack.Companion.ActionType) {
         for (callBack in listenerCallbacks.values) {

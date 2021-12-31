@@ -13,12 +13,22 @@ import java.nio.file.Paths
 import java.util.concurrent.ConcurrentSkipListSet
 
 fun main(){
-val set=ConcurrentSkipListSet<String>()
-set.addAll(listOf( "one", "two", "three") )
-set.filter { it=="two" }.forEach {set.remove(it)}
-    println("Good---set is ${set.toString()}")
+    println("Digits in number 100 : ${digitsInNumber(100)}")
+    println("Digits in number 1 : ${digitsInNumber(1)}")
+    println("Digits in number 1000 :${digitsInNumber(1000)}")
 }
-
+fun digitsInNumber(numb: Int,holder:Int=0):Int{
+    val preResult:Int=numb/10
+    if(preResult>=10){
+        return digitsInNumber(preResult,holder+1)
+    }else{
+        if(preResult==0){
+            return 1+holder
+        }else{
+            return 2+holder
+        }
+    }
+}
 
 
 fun main1(){

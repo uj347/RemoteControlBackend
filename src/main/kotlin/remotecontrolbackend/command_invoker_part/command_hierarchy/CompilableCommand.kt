@@ -1,6 +1,5 @@
 package remotecontrolbackend.command_invoker_part.command_hierarchy
 
-import remotecontrolbackend.command_invoker_part.command_repo.CommandRepo
 import java.nio.file.Path
 import java.util.*
 import kotlin.io.path.exists
@@ -24,13 +23,13 @@ abstract class CompilableCommand(entityMap: Map<String, String>) : SerializableC
         get() {
             return entityMap.get(OBLIGATORY_ENTITY_KEY_COMPILABLECOMMAND_UID)!!
         }
-    val fileExtention:String
+    val fileExtension:String
     get()=entityMap.get(OBLIGATORY_ENTITY_KEY_COMPILABLECOMMAND_FILE_EXTENTION)!!
 
     override val description: String?
         get() = entityMap.get(OBLIGATORY_ENTITY_KEY_COMMAND_DESCRIPTION)
 
-    val uniqueFileName:String=uid+fileExtention
+    val uniqueFileName:String=uid+fileExtension
 
 
     protected fun checkIsCompiled(invokerDirectory: Path):Boolean {

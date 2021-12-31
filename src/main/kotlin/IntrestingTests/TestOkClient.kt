@@ -50,7 +50,7 @@ fun main() {
             .sslSocketFactory(sslFactory.sslSocketFactory,sslFactory.trustManager.orElseThrow())
             .hostnameVerifier(object:HostnameVerifier {
                 override fun verify(hostname: String?, session: SSLSession?): Boolean {
-                    return true;
+                    return true
                 }
             })
             .build()

@@ -14,14 +14,14 @@ import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableC
 import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dagger.NettySubComponent.Companion.COMMAND_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
-import remotecontrolbackend.netty_part.utils.FullRequestChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 import java.lang.RuntimeException
 import java.lang.reflect.Type
 import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import kotlin.jvm.Throws
-@FullRequestChain
+@SpecificChain(chainType = SpecificChain.ChainType.FULLREQUEST)
 @Sharable
 abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
     FullRequestWorkModeHandler() {
@@ -77,15 +77,15 @@ abstract class AbstractCommandHandler(val commandInvoker: CommandInvoker) :
     }
 
 
-    fun CommandInvoker.getCachedCommandReferences(): Set<out CommandReference> {
-        return this.commandRepo.pointerMap?.keys ?: emptySet<CommandReference>()
+    suspend fun CommandInvoker.getCachedCommandReferences(): Collection<out CommandReference> {
+        return this.commandRepo.getAllReferences()
     }
 
 
-    protected fun ChannelHandlerContext.formGetResponse(): FullHttpResponse {
-        val moshi = commandInvoker.commandRepo.moshi
+    suspend protected fun ChannelHandlerContext.formGetResponse(): FullHttpResponse {
+        val moshi = commandInvoker.moshi
         val setType: Type = Types.newParameterizedType(Set::class.java, SerializableCommand::class.java)
-        val adapter = moshi.adapter<Set<SerializableCommand>>(setType)
+        val adapter = moshi.adapter<Collection<SerializableCommand>>(setType)
         val stringRepresentationOfSet = adapter.toJson(commandInvoker.getCachedCommandReferences())
         logger.debug("In formGetResponse: stringRepresantation of set is : $stringRepresentationOfSet")
         val serializedComRefSet: ByteBuf =

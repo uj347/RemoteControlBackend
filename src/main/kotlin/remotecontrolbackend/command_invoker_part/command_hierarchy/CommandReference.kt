@@ -52,7 +52,7 @@ class CommandReference constructor(
         }
     }
 
-    //TODO Вытащитьь команду из репо и запусттить
+    //TODO Вытащитьь команду из репо и запустить
     override suspend fun execute(infoToken: Map<String, Any>) {
         val commandRepo = (infoToken.get(INVOKER_INSTANCE_LITERAL) as CommandInvoker).commandRepo
         commandRepo.getCommand(this)?.execute(infoToken)
@@ -71,11 +71,9 @@ class CommandReference constructor(
         if (javaClass != other?.javaClass) return false
 
         other as CommandReference
+        return commandClassName== other.commandClassName &&
+                commandDescription == other.commandDescription
 
-        if (commandClassName != other.commandClassName) return false
-        if (commandDescription != other.commandDescription) return false
-
-        return true
     }
 
     override fun hashCode(): Int {

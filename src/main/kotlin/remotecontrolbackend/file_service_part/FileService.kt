@@ -2,6 +2,7 @@ package remotecontrolbackend.file_service_part
 
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.io.IOUtils
@@ -12,11 +13,9 @@ import remotecontrolbackend.dagger.FileServiceModule.Companion.FILESERVICE_COROU
 import remotecontrolbackend.dagger.FileServiceScope
 import remotecontrolbackend.dagger.FileServiceSubcomponent
 import remotecontrolbackend.dagger.PathMonitorFactory
-import remotecontrolbackend.file_service_part.file_filters.PathRepoBackedFileFilter
-import remotecontrolbackend.file_service_part.path_list_provider_part.IPathListProvider
+import remotecontrolbackend.file_service_part.path_list_provider_part.IFileServicePathListProvider
 import remotecontrolbackend.file_service_part.path_repo_part.IFilePathRepo
 import java.io.*
-import java.nio.file.AccessDeniedException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -31,7 +30,7 @@ import kotlin.io.path.isDirectory
 @FileServiceScope
 class FileService(
     fileServiceSCBuilder: FileServiceSubcomponent.Builder,
-    private var initialPathProvider: IPathListProvider?
+    private var initialPathProvider: IFileServicePathListProvider?
 ) {
     //NB - File repo most contain path for all possible terminal and intermediate nodes
     @Inject
@@ -84,6 +83,8 @@ class FileService(
                 if (!dropBoxPath.exists()) {
                     Files.createDirectories(dropBoxPath)
                 }
+                observedPathsRepo.initialize()
+                exceptedPathRepo.initialize()
                 dropBoxPath.extractAllNodes().let {
                     logger.debug("All extracated from dropBox Nodes is: $it")
                     observedPathsRepo.add(*it.toTypedArray())
@@ -107,11 +108,12 @@ class FileService(
         logger.debug("Reinitialization of File Service started")
         when(initialized){
 
-            //TODO Почему пафМонитор не ребутится
             true->{
                 logger.debug("Already initialized->complex initialization")
                 fileServiceContext.cancelChildren()
                 pathMonitor.stop()
+                observedPathsRepo.terminate()
+                exceptedPathRepo.terminate()
                 _initialized.set(false)
                 observedPathsRepo=repoProvider.get()
                 exceptedPathRepo=repoProvider.get()
@@ -126,7 +128,7 @@ class FileService(
         }
 
     }
-    suspend fun additionalPaths(additionalProvider: IPathListProvider) {
+    suspend fun additionalPaths(additionalProvider: IFileServicePathListProvider) {
         withContext(fileServiceContext) {
             if (initialized) {
                 val additonalPaths = additionalProvider.get().flatMap { it.extractAllNodes() }.toTypedArray()
@@ -146,24 +148,45 @@ class FileService(
             }
         }
     }
-
-    suspend fun provideFileStream(path: Path): InputStream {
+//TODO Не забыть, что пееделано  с учетом экстракции только топ-ЛВЛ нодов
+    suspend fun provideFileStream(inputPaths: Collection<Path>,onlyTopNodes:Boolean=true): InputStream {
         return withContext(fileServiceContext) {
             if (initialized) {
-                if (path !in observedPathsRepo.get()) {
-                    throw IllegalAccessException("Path is out of scope")
-                }
-                when (path.isDirectory()) {
-                    false -> {
-                        return@withContext BufferedInputStream(FileInputStream(path.toFile()))
-                    }
-                    true -> {
-                        val (inputStream, job) = zipper.zipThisFile(path.toFile())
-                        job.start()
-                        return@withContext inputStream
-                    }
+                val operationalPaths=when(onlyTopNodes){
+                    true->{inputPaths.findTopLevelNodes()}
+                    false->{inputPaths}
                 }
 
+                for(path in operationalPaths) {
+                    if (path !in observedPathsRepo.get()) {
+                        throw IllegalAccessException("Path is out of scope")
+                    }
+                }
+                   when(operationalPaths.size){
+                        0->throw IllegalArgumentException("Pass not empty collection of Paths")
+                        1->{
+                            operationalPaths.first().let{ path->
+                               return@withContext when (path.isDirectory()) {
+                                    false -> {
+//                                        return@withContext
+                                        BufferedInputStream(FileInputStream(path.toFile()))
+                                    }
+                                    true -> {
+                                        val (inputStream, job) = zipper.zipThisFiles(setOf(path.toFile()))
+                                        job.start()
+//                                        return@withContext
+                                        inputStream
+                                    }
+                                }
+                            }
+                        }
+                        else->{
+                            val(inputStream, job)= zipper.zipThisFiles(operationalPaths.map { it.toFile() })
+                            job.start()
+                            yield()
+                            inputStream
+                        }
+                    }
             } else {
                 throw RuntimeException("FileService isn't initialized")
             }
@@ -183,8 +206,9 @@ class FileService(
     }
 
 
-    suspend private fun InputStream.checkAndSave(fileName: String, count: Int? = null) {
+    private suspend fun InputStream.checkAndSave(fileName: String, count: Int? = null) {
         withContext(fileServiceContext) {
+            yield()
             val fileExtension = FilenameUtils.getExtension(fileName)
             val pureName = FilenameUtils.removeExtension(fileName)
 //            ("check and save is running with fileExtension: $fileExtension and pureName: $pureName")
@@ -206,7 +230,11 @@ class FileService(
                     if (count == 1) {
                         pureName + scopeSuffix + "." + fileExtension
                     } else {
-                        pureName.substring(0, pureName.length - 3) + scopeSuffix + "." + fileExtension
+                        var suffixLength:Int=3
+                        count?.let{
+                        suffixLength=digitsInNumber(count-1)+2
+                        }
+                        pureName.substring(0, pureName.length - suffixLength) + scopeSuffix + "." + fileExtension
                     }
                 }
             }
@@ -216,10 +244,12 @@ class FileService(
             if (scopeFileName in dropBoxFileNames) {
 //                logger.debug("DropBox contains file with scope fileName")
                 val nextScopeCount: Int = count?.inc() ?: 1
+                yield()
 //                "Proceeding to the next invocation of checkAndSave with nextCount: $nextScopeCount")
                 this@checkAndSave.checkAndSave(scopeFileName, nextScopeCount)
             } else {
                 val newFilePath = dropBoxPath.resolve(Paths.get(scopeFileName))
+                yield()
                 BufferedOutputStream(FileOutputStream(newFilePath.toFile())).use {
                     IOUtils.copy(this@checkAndSave, it)
                     it.flush()
@@ -231,19 +261,19 @@ class FileService(
     }
 
 
-    //TODO Понять почему эта хуйнища выкидывает стакОверфлоу
-    fun Path.extractAllNodes(): Collection<Path> {
+
+    suspend fun Path.extractAllNodes(): Collection<Path> {
+        yield()
        var result= FileUtils.listFiles(this.toFile(),TrueFileFilter.TRUE,null)
             .flatMap { it.extractNode()}
         result=result.plusElement(this)
 
-        //TODO TestBench
         return result
 
     }
 
-    fun File.extractNode():Collection<Path>{
-
+    suspend fun File.extractNode():Collection<Path>{
+yield()
 val result= when(this.isDirectory){
     true->{
         kotlin.runCatching {
@@ -270,6 +300,18 @@ val result= when(this.isDirectory){
     }
 }
         return result
+    }
+    private fun digitsInNumber(numb: Int,holder:Int=0):Int{
+        val preResult:Int=numb/10
+    if(preResult>=10){
+    return digitsInNumber(preResult,holder+1)
+    }else{
+        if(preResult==0){
+            return 1+holder
+        }else{
+            return 2+holder
+        }
+    }
     }
 
 

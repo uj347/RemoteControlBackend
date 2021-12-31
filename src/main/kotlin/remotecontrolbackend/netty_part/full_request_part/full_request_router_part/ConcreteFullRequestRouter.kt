@@ -8,12 +8,13 @@ import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent.Companion.FULL_REQUEST_ROUTER_LITERAL
 import remotecontrolbackend.netty_part.full_request_part.FullRequestWorkModeHandler
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
+import remotecontrolbackend.netty_part.send404Response
 import remotecontrolbackend.netty_part.send501Response
-import remotecontrolbackend.netty_part.utils.FullRequestChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 
 import javax.inject.Inject
 @Sharable
-@FullRequestChain
+@SpecificChain(chainType = SpecificChain.ChainType.FULLREQUEST)
 @NettyScope
 class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRouter() {
 
@@ -39,7 +40,8 @@ class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRoute
         msg?.let {
             val httpMsg=it
             val queryStringDecoder = QueryStringDecoder(it.uri())
-            val workMode=queryStringDecoder.path().lowercase().substring(1)
+            val workMode=queryStringDecoder.path().lowercase().substring(1).substringBefore("/")
+            logger.debug("Extracted workmode: $workMode")
             when (workMode) {
                 in fullRequestHandlers -> {
                     ctx?.let{
@@ -54,7 +56,8 @@ class ConcreteFullRequestRouter @Inject constructor() : AbstractFullRequestRoute
 
 
                 else -> {
-                    ctx.send501Response()
+                    logger.debug("there is no supported workmode [$workMode]")
+                    ctx.send404Response("Workmode $workMode not supported")
                     ctx?.close()
                 }
             }

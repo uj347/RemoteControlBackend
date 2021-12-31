@@ -6,9 +6,9 @@ import io.netty.handler.codec.http.*
 
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.netty_part.full_request_part.command_handler_part.AbstractCommandHandler
-import remotecontrolbackend.netty_part.utils.FullRequestChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 import javax.inject.Inject
-@FullRequestChain
+@SpecificChain(chainType = SpecificChain.ChainType.FULLREQUEST)
 @Sharable
 @NettyScope
 

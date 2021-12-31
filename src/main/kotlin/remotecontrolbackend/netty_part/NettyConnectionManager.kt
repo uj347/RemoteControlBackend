@@ -113,11 +113,6 @@ class NettyConnectionManager(
 
                                     )
 
-                                    it.pipeline().addLast(
-                                        HTTP_AGGREGATOR_LITERAL,
-                                        HttpObjectAggregator(Int.MAX_VALUE)
-                                    )
-
 
                                     it.pipeline().addLast(
                                         FULL_REQUEST_ROUTER_LITERAL,
@@ -125,16 +120,8 @@ class NettyConnectionManager(
                                     )
 
                                     it.pipeline().addLast(
-                                        EXCEPTION_CATCHER_LITERAL,
-                                        object : ChannelInboundHandlerAdapter() {
-                                            override fun exceptionCaught(
-                                                ctx: ChannelHandlerContext?,
-                                                cause: Throwable?
-                                            ) {
-                                                cause?.let { logger.error(it) }
-                                                ctx?.channel()?.close()
-                                            }
-                                        }
+                                       ExceptionCatcherHandler.handlerDescription,
+                                        ExceptionCatcherHandler()
                                     )
 
                                 }

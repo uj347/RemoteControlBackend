@@ -14,7 +14,7 @@ import remotecontrolbackend.dagger.NettyMainModule.Companion.NETTY_COROUTINE_CON
 import remotecontrolbackend.dagger.NettyScope
 import remotecontrolbackend.dagger.NettySubComponent.Companion.ROBOT_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.send200Response
-import remotecontrolbackend.netty_part.utils.ChunkedChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 import remotecontrolbackend.robot.RobotCommandPack
 import remotecontrolbackend.robot.RobotManager
 import java.nio.charset.StandardCharsets
@@ -24,7 +24,7 @@ import javax.inject.Named
 import kotlin.coroutines.CoroutineContext
 
 //TODO Переделать его в ЧэнелАдаптер
-@ChunkedChain
+@SpecificChain(SpecificChain.ChainType.CHUNKED)
 @NettyScope
 @Sharable
 class ConcreteRobotHandler @Inject constructor() : AbstractRobotHandler() {

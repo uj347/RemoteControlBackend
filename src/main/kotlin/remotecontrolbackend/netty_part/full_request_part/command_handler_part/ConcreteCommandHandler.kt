@@ -16,7 +16,7 @@ import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
 import remotecontrolbackend.dagger.NettySubComponent.Companion.COMMAND_HANDLER_LITERAL
 import remotecontrolbackend.netty_part.send200Response
 import remotecontrolbackend.netty_part.send500Response
-import remotecontrolbackend.netty_part.utils.FullRequestChain
+import remotecontrolbackend.netty_part.utils.SpecificChain
 import java.lang.RuntimeException
 import javax.inject.Inject
 
@@ -25,7 +25,7 @@ import javax.inject.Inject
  *{@link CommandStrategy}
  * при отсутствии стратеджи в POST реквесте будет использована postfair
  */
-@FullRequestChain
+@SpecificChain(chainType = SpecificChain.ChainType.FULLREQUEST)
 @Sharable
 class ConcreteCommandHandler
 @Inject constructor(commandInvoker: CommandInvoker) : AbstractCommandHandler(commandInvoker) {
@@ -40,7 +40,7 @@ class ConcreteCommandHandler
         get() = Companion.logger
 
     //TODO Вот тут нужно бы потестить, слеплено на коленке
-    val moshi = commandInvoker.commandRepo.moshi
+    val moshi = commandInvoker.moshi
 
     override fun handlerAdded(ctx: ChannelHandlerContext?) {
         super.handlerAdded(ctx)

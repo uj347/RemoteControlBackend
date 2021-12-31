@@ -1,34 +1,53 @@
 package remotecontrolbackend.netty_part
 
+import io.netty.buffer.ByteBuf
+import io.netty.buffer.ByteBufUtil
+import io.netty.buffer.EmptyByteBuf
 import io.netty.channel.ChannelFuture
 import io.netty.channel.ChannelHandlerContext
-import io.netty.handler.codec.http.DefaultFullHttpResponse
-import io.netty.handler.codec.http.HttpHeaderNames
-import io.netty.handler.codec.http.HttpResponseStatus
-import io.netty.handler.codec.http.HttpVersion
+import io.netty.handler.codec.http.*
+import java.nio.charset.StandardCharsets
 
+//TODO
+fun ChannelHandlerContext?.send501Response(msg:String?=null):ChannelFuture{
+   var contentLength=0
+    val msgBuf:ByteBuf=this!!.alloc().buffer()
 
-fun ChannelHandlerContext?.send501Response():ChannelFuture{
-    return this!!.writeAndFlush(
+    msg?.let{message->
+        msgBuf.writeCharSequence(message, StandardCharsets.UTF_8)
+            contentLength = msgBuf.readableBytes()
+    }
+    return this.writeAndFlush(
         DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1,
-            HttpResponseStatus.NOT_IMPLEMENTED
+            HttpResponseStatus.NOT_IMPLEMENTED,
+            msgBuf
         ).also {
             it.headers().add(HttpHeaderNames.CONNECTION,"close")
-            it.headers().add(HttpHeaderNames.CONTENT_LENGTH, "0")
+            it.headers().add(HttpHeaderNames.CONTENT_TYPE,HttpHeaderValues.TEXT_PLAIN.concat("; charset=UTF-8"))
+            it.headers().add(HttpHeaderNames.CONTENT_LENGTH, contentLength)
         }
     )
 
 }
 
-fun ChannelHandlerContext?.send404Response():ChannelFuture{
-    return this!!.writeAndFlush(
+fun ChannelHandlerContext?.send404Response(msg:String?=""):ChannelFuture{
+    var contentLength=0
+    val msgBuf:ByteBuf=this!!.alloc().buffer()
+
+    msg?.let{message->
+        msgBuf.writeCharSequence(message, StandardCharsets.UTF_8)
+        contentLength = msgBuf.readableBytes()
+    }
+    return this.writeAndFlush(
         DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1,
-            HttpResponseStatus.NOT_FOUND
+            HttpResponseStatus.NOT_FOUND,
+            msgBuf
         ).also {
             it.headers().add(HttpHeaderNames.CONNECTION,"close")
-            it.headers().add(HttpHeaderNames.CONTENT_LENGTH, "0")
+            it.headers().add(HttpHeaderNames.CONTENT_TYPE,HttpHeaderValues.TEXT_PLAIN.concat("; charset=UTF-8"))
+            it.headers().add(HttpHeaderNames.CONTENT_LENGTH, contentLength)
         }
     )
 }
@@ -42,15 +61,25 @@ fun ChannelHandlerContext?.send200Response():ChannelFuture{
         })
 }
 
-fun ChannelHandlerContext?.send500Response():ChannelFuture{
-   return this!!.writeAndFlush(
+fun ChannelHandlerContext?.send500Response(msg:String?=""):ChannelFuture{
+    var contentLength=0
+    val msgBuf:ByteBuf=this!!.alloc().buffer()
+
+    msg?.let{message->
+        msgBuf.writeCharSequence(message, StandardCharsets.UTF_8)
+        contentLength = msgBuf.readableBytes()
+    }
+   return this.writeAndFlush(
         DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1,
-            HttpResponseStatus.INTERNAL_SERVER_ERROR
+            HttpResponseStatus.INTERNAL_SERVER_ERROR,
+            msgBuf
         ).also {
             it.headers().add(HttpHeaderNames.CONNECTION,"close")
-            it.headers().add(HttpHeaderNames.CONTENT_LENGTH, "0")
+            it.headers().add(HttpHeaderNames.CONTENT_TYPE,HttpHeaderValues.TEXT_PLAIN.concat("; charset=UTF-8"))
+            it.headers().add(HttpHeaderNames.CONTENT_LENGTH, contentLength)
         }
     )
 
 }
+

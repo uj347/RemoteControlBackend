@@ -109,6 +109,4 @@ class RobotManager(robotManagerSubcomponentBuilder: RobotManagerSubcomponent.Rob
 
 }
 
- data class RobotCommandPack(val commandArray:Array<String>, val promise:CompletableFuture<Unit>?) {
-
-}
+ data class RobotCommandPack(val commandArray:Array<String>, val promise:CompletableFuture<Unit>?)

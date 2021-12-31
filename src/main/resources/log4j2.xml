@@ -15,6 +15,11 @@
                 <AppenderRef ref="console" />
         </Logger>
 
+        <Logger name="remotecontrolbackend.file_service_part" level="DEBUG" additivity="false" >
+            <AppenderRef ref="console" />
+        </Logger>
+
+
         <Logger name="remotecontrolbackend.command_invoker_part" level="DEBUG" additivity="false" >
             <AppenderRef ref="console" />
         </Logger>
@@ -22,6 +27,12 @@
         <Logger name="javax.jmdns" level="error" additivity="false" >
             <AppenderRef ref="console" />
         </Logger>
+
+        <Logger name="com.zaxxer.hikari" level="error" additivity="false" >
+            <AppenderRef ref="console" />
+        </Logger>
+
+
 
 
     </Loggers>

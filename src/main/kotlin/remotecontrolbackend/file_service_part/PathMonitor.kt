@@ -38,7 +38,7 @@ class PathMonitor @AssistedInject constructor(
         val logger = LogManager.getLogger()
     }
     init {
-        logger.debug("New pathMonitor creation: ${this.toString()}")
+        logger.debug("New pathMonitor creation: ${this}")
     }
 
 
@@ -112,6 +112,7 @@ class PathMonitor @AssistedInject constructor(
                         for (entry in observers) {
                             entry.value.let { observer ->
                                 observer.checkAndNotify()
+                                yield()
                             }
                         }
                         delay(1000)
@@ -121,6 +122,7 @@ class PathMonitor @AssistedInject constructor(
                     while (isActive) {
                         delay(15000)
                         cleanUp()
+                        yield()
                     }
                 }
             }
@@ -132,7 +134,7 @@ class PathMonitor @AssistedInject constructor(
         //TODO Точно лии это здесь нужно
         logger.debug("Stopping $this pathMonitor")
         observedPathsRepo.deregisterListener(this)
-        pathMonitorJob?.cancel()
+        monitorScope.coroutineContext.cancelChildren()
     }
 
 
@@ -145,50 +147,20 @@ class PathMonitor @AssistedInject constructor(
     }
 
     /** Очистть репо от несущестующих путей*/
-    private fun cleanUp() {
+    suspend fun  cleanUp() {
         val repoPaths = observedPathsRepo.get()
         for (path in repoPaths) {
             if (!path.exists()) {
                 observedPathsRepo.remove(path)
+                yield()
             }
         }
     }
 
-//TODO Most be heavily checked
+//TODO Вывестиэто в топлевел функцию и приделать версию для экстракции фалов и топ левел дирректорий(возможно в формате Булеан параметра, который заставит заппендить файлы в рут дире)
     /** Потный кусок *** который должен брать только  топ-левел дирректории из одной коллекции и возвращать их в виде списка */
     private fun Collection<Path>.findTopLevelDirs(target: MutableCollection<Path>): Collection<Path> {
-logger.debug("In finding top lvl dirs with collection:$this \n and target: $target ")
-        val isDirectory = { p: Path ->
-            p.isDirectory()
-        }
-
-        val hasParentsInTargetSet = { p: Path ->
-            var result = false
-            target.forEach { resultDirPath ->
-                if (p != resultDirPath && p.startsWith(resultDirPath)) {
-                    result = true
-                }
-            }
-            result
-        }
-
-        val hasParentsInSourceSet = { p: Path ->
-            var result = false
-            forEach { sourcePath ->
-                if (p != sourcePath && p.startsWith(sourcePath)) {
-                    result = true
-                }
-            }
-            result
-        }
-        val resultSet = HashSet<Path>()
-        this.filter(isDirectory)
-            .filterNot(hasParentsInTargetSet)
-            .filterNot(hasParentsInSourceSet)
-            .forEach {
-                resultSet.add(it)
-            }
-        return resultSet
+        return this.findTopLevelNodes(target,true)
     }
 
     /**Returns true if some observers was removed.*/
@@ -207,14 +179,7 @@ logger.debug("In finding top lvl dirs with collection:$this \n and target: $targ
         return result
     }
 
-//    private fun removePathsFromMonitorScope(paths: Collection<Path>) {
-//        for (path in paths) {
-//            observers.get(path)?.destroy()
-//            observers.remove(path)
-//            _observableDirs.remove(path)
-//
-//        }
-//    }
+
 
     /** Returns true if some observers was added**/
     private fun addObserversForPaths(paths: Collection<Path>): Boolean {
@@ -308,6 +273,7 @@ logger.debug("In finding top lvl dirs with collection:$this \n and target: $targ
                 logger.debug("Notifiyng about triggering of callback")
                 _observedRepoCallBackNotificationFlow.emit(paths to actionType)
 
+
             }
             when (actionType) {
 
@@ -323,12 +289,12 @@ logger.debug("In finding top lvl dirs with collection:$this \n and target: $targ
                                     .filter{!it.isExcepted()}
                                     .forEach {
                                         removeObserverForPaths(setOf(it))
-//                                        removePathsFromMonitorScope(setOf(it))
                                     }
                             }
                             _observableDirs.addAll(newTops)
                             addObserversForPaths(newTops)
                         }
+
                 }
                 DataSetCallBack.Companion.ActionType.DELETED -> {
                     removeObserverForPaths(paths)

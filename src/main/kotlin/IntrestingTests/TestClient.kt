@@ -16,14 +16,18 @@ import kotlinx.coroutines.runBlocking
 import remotecontrolbackend.ROOT_DIR
 import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
 import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
+import remotecontrolbackend.moshi.PathAdapter
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 
 fun main() {
-    val testClient = TestClient()
-    testClient.launchTestClient()
+val moshi =Moshi.Builder().add(PathAdapter()).build()
+    val adapter= moshi.adapter<Set<Path>>(Types.newParameterizedType(Set::class.java,Path::class.java))
+    val pathSet= setOf<Path>(Paths.get("jojo"),Paths.get("sss"))
+    println(adapter.toJson(pathSet))
 }
 
 class TestClient {
@@ -33,7 +37,6 @@ class TestClient {
         .builder()
         .setWorkDirectory(Paths.get(ROOT_DIR))
         .setPort(34444)
-        .isTestRun(true)
         .isSSLEnabled(false)
         .isAuthEnabled(false)
         .buildMainComponent()

@@ -28,7 +28,7 @@ class DnsSdManager (val dnsSdSubComponent: DnsSdSubComponent.DnsSdSubComponentBu
     //todo переделать в контекст-аксептинг
      fun launchDnsSd(coroutineScope: CoroutineScope){
 
-        dnsSdJob=coroutineScope.launch(){
+        dnsSdJob=coroutineScope.launch {
             println("Before registering service in DNS SD")
             jmDns.registerService(dnsSdInfo)
             println("${dnsSdInfo.name} service was registered in DNS SD")

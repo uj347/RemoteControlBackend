@@ -1,6 +1,6 @@
 package remotecontrolbackend.command_invoker_part.command_repo
 
-import WORK_DIR_LITERAL
+import ROOT_DIR_LITERAL
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,15 +25,16 @@ import kotlin.io.use
 import remotecontrolbackend.command_invoker_part.command_hierarchy.*
 import java.util.concurrent.ConcurrentHashMap
 
+
 //todo Вынести в субкомпонент команд инвокера
 @ComInvScope
-class CommandRepo
+class BarbarianCommandRepo
 @Inject
 constructor(
-    @Named(WORK_DIR_LITERAL)
+    @Named(ROOT_DIR_LITERAL)
     val workPath: Path,
     val commandInvokerSubcomponent: CommandInvokerSubcomponent
-) {
+) : ICommandRepo {
 
 companion object {
     val logger=LogManager.getLogger()
@@ -51,7 +52,7 @@ companion object {
     val serializedCommandsDir = repoDirectory.resolve(SERIALIZED_COMMANDS_DIR)
     val compiledCommandsDir = repoDirectory.resolve(COMPILED_COMMANDS_DIR)
     val pointerMapPath = repoDirectory.resolve(POINTER_MAP_FILE_NAME)
-    var isInitialized: Boolean = false
+    override var isInitialized: Boolean = false
     private val pointerMapAdapter=commandInvokerSubcomponent.getPointerMapAdapter()
 
     //Чек лист
@@ -63,8 +64,9 @@ companion object {
 
 
 
-    suspend fun initialize() {
+    override suspend fun initialize() {
         logger.debug("Command repo initialization started")
+        System.err.println("BARBARIAN IN ACTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         if (isInitialized) {
             return
         }
@@ -110,7 +112,7 @@ companion object {
 
     /** Добавить команду в рантайм пойнтермапу и пихнуть сериализованную команду в папку Коммандс*/
 
-    suspend fun addToRepo(command: SerializableCommand): Boolean {
+    override suspend fun addToRepo(command: SerializableCommand): Boolean {
         if (!isInitialized) {
             return false
         }
@@ -142,7 +144,7 @@ companion object {
 
 
     /**Получить Path на комманду из рантайм пойнтермапы и десериализовать команду */
-    suspend fun getCommand(reference: CommandReference): SerializableCommand? {
+    override suspend fun getCommand(reference: CommandReference): SerializableCommand? {
         if (!isInitialized) {
             return null
         }
@@ -169,7 +171,7 @@ suspend fun cleanRepoPointermap():Boolean{
 
 
     /**Удалить комманду из рантайм-Пойнтермапы, валидейт сделает все остальное в свое время*/
-    suspend fun removeCommand(reference: CommandReference): Boolean {
+    override suspend fun removeCommand(reference: CommandReference): Boolean {
         if (_pointerMap?.contains(reference) ?: return false) {
             _pointerMap?.remove(reference) ?: return false
             return true
@@ -179,7 +181,7 @@ suspend fun cleanRepoPointermap():Boolean{
 
 
     /** ЮТИЛИТИ Сериализовать содержимое рантайм ПоинтерМапы в Джейсон, полностью переписав ее*/
-    suspend fun saveChanges(): Boolean {
+   override suspend fun terminalOperation(): Boolean {
         if (!isInitialized) {
             return false
         }
@@ -256,6 +258,9 @@ suspend fun cleanRepoPointermap():Boolean{
         }
     }
 
+    override suspend fun getAllReferences(): Collection<CommandReference> {
+       return _pointerMap?.keys?: setOf()
+    }
 
     /** ЮТИЛ Пройтись по чек листу и выставить все флаги в соответсвии*/
     private suspend fun runCheckList() {

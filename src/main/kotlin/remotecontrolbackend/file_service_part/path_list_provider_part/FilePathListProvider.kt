@@ -7,7 +7,7 @@ import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.readLines
 
-class FilePathListProvider(val manifestFile: Path):IPathListProvider {
+class FilePathListProvider(val manifestFile: Path):IFileServicePathListProvider {
     private val pathsFromManifest:Collection<Path>
     init{
         if(!manifestFile.exists()){

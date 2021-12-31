@@ -26,5 +26,4 @@ fun main(){
 
 }
 
-class SuperVisorTests {
-}
+class SuperVisorTests

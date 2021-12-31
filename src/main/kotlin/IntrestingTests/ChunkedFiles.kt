@@ -31,9 +31,9 @@ import kotlin.io.path.deleteExisting
 import kotlin.io.path.exists
 
 
-class DummyHandler():ChannelInboundHandlerAdapter()
+class DummyHandler :ChannelInboundHandlerAdapter()
 
-class RemoveDummyHandler():ChannelInboundHandlerAdapter(){
+class RemoveDummyHandler :ChannelInboundHandlerAdapter(){
     override fun channelActive(ctx: ChannelHandlerContext?) {
         ctx?.let{
             println("Remove dummy in action")
@@ -50,7 +50,7 @@ class RemoveDummyHandler():ChannelInboundHandlerAdapter(){
     }
 }
 
-class Zipper() : SimpleChannelInboundHandler<Path>() {
+class Zipper : SimpleChannelInboundHandler<Path>() {
 
     fun startZippin(filePath: Path): ChunkedStream {
         val pipeIn = PipedInputStream(12000)
@@ -92,7 +92,7 @@ class Zipper() : SimpleChannelInboundHandler<Path>() {
 }
 
 
-class TestFileHandler() : ChannelInboundHandlerAdapter() {
+class TestFileHandler : ChannelInboundHandlerAdapter() {
     var zipCompleted: ChannelPromise? = null
 
     override fun channelActive(ctx: ChannelHandlerContext?) {
