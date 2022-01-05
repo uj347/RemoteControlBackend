@@ -1,7 +1,7 @@
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
-import remotecontrolbackend.robot.RobotCommandPack
+import com.uj.rcbackend.robot.RobotCommandPack
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 

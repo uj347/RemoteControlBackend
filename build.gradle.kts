@@ -35,8 +35,8 @@ repositories {
 sqldelight {
     this.
     database("H2Database") {
-        sourceFolders= listOf("sqldelight_h2_db")
-        packageName ="remotecontrolbackend.database"
+        sourceFolders= listOf("sqldelighth2db")
+        packageName ="com.uj.rcbackend.database"
         dialect = "mysql"
     }
 
@@ -68,8 +68,12 @@ dependencies {
     implementation("io.github.hakky54:sslcontext-kickstart:7.0.2")
     implementation("io.github.hakky54:sslcontext-kickstart-for-pem:7.0.2")
     implementation("org.apache.commons:commons-compress:1.21")
-    implementation("org.mockito:mockito-core:4.1.0")
+    testImplementation("org.mockito:mockito-inline:4.1.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:2.23.0")
     implementation("com.zaxxer:HikariCP:5.0.0")
+    testImplementation ("org.junit.jupiter:junit-jupiter-api:5.1.1")
+    testImplementation ("org.mockito.kotlin:mockito-kotlin:4.0.0")
+
 }
 
 tasks.test {
@@ -88,6 +92,20 @@ sourceSets {
         }
     }
 }
+
+    tasks.jar {
+        manifest {
+            attributes["Main-Class"] = "com.uj.rcbackend.UjMain"
+
+        }
+//        destinationDirectory.set(File("c:\\ujtrash\\"))
+//        archiveFileName.set("testone.jar")
+        configurations["compileClasspath"].forEach { file: File ->
+            from(zipTree(file.absoluteFile))
+        }
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+
 
 
 

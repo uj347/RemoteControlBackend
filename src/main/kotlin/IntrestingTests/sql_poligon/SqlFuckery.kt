@@ -1,19 +1,5 @@
 package IntrestingTests.sql_poligon
 
-import com.squareup.sqldelight.sqlite.driver.asJdbcDriver
-import com.zaxxer.hikari.HikariDataSource
-import org.h2.security.auth.H2AuthConfig
-import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
-import remotecontrolbackend.command_invoker_part.command_repo.createReference
-import remotecontrolbackend.database.H2Database
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
-import java.sql.DriverManager
-import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.io.path.deleteExisting
-import kotlin.io.path.exists
-
 fun main(){
 
 //    val source=HikariDataSource()

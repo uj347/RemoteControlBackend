@@ -2,7 +2,7 @@ package IntrestingTests
 
 import kotlinx.coroutines.*
 import org.apache.commons.compress.utils.IOUtils
-import remotecontrolbackend.file_service_part.ZipStreamer
+import com.uj.rcbackend.fileservicepart.ZipStreamer
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream

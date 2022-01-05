@@ -2,9 +2,9 @@ import kotlinx.coroutines.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import remotecontrolbackend.command_invoker_part.command_hierarchy.*
-import remotecontrolbackend.command_invoker_part.command_invoker.CommandInvoker
-import remotecontrolbackend.command_invoker_part.command_repo.createReference
+import com.uj.rcbackend.commandinvokerpart.commandhierarchy.*
+import com.uj.rcbackend.commandinvokerpart.commandinvoker.CommandInvoker
+import com.uj.rcbackend.commandinvokerpart.commandrepo.createReference
 import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.test.assertEquals

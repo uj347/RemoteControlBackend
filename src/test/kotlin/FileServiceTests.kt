@@ -5,12 +5,12 @@ import org.apache.commons.io.IOUtils
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import remotecontrolbackend.dagger.FileServiceSubcomponent
-import remotecontrolbackend.dagger.PathMonitorFactory
+import com.uj.rcbackend.dagger.FileServiceSubcomponent
+import com.uj.rcbackend.dagger.PathMonitorFactory
 
-import remotecontrolbackend.file_service_part.path_list_provider_part.HardCodePathListProvider
-import remotecontrolbackend.file_service_part.path_list_provider_part.IFileServicePathListProvider
-import remotecontrolbackend.file_service_part.path_repo_part.IFilePathRepo
+import com.uj.rcbackend.fileservicepart.pathlistproviderpart.HardCodePathListProvider
+import com.uj.rcbackend.fileservicepart.pathlistproviderpart.IFileServicePathListProvider
+import com.uj.rcbackend.fileservicepart.pathrepopart.IFilePathRepo
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter

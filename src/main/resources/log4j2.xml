@@ -11,16 +11,16 @@
             <AppenderRef ref="console" />
         </Root>
 
-        <Logger name="remotecontrolbackend.netty_part" level="DEBUG" additivity="false" >
+        <Logger name="com.uj.rcbackend.nettypart" level="DEBUG" additivity="false" >
                 <AppenderRef ref="console" />
         </Logger>
 
-        <Logger name="remotecontrolbackend.file_service_part" level="DEBUG" additivity="false" >
+        <Logger name="com.uj.rcbackend.fileservicepart" level="DEBUG" additivity="false" >
             <AppenderRef ref="console" />
         </Logger>
 
 
-        <Logger name="remotecontrolbackend.command_invoker_part" level="DEBUG" additivity="false" >
+        <Logger name="com.uj.rcbackend.commandinvokerpart" level="DEBUG" additivity="false" >
             <AppenderRef ref="console" />
         </Logger>
 

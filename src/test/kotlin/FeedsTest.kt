@@ -1,12 +1,11 @@
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import remotecontrolbackend.configuration_utilities.extraction_feeds.FilePropertiesFeed
+import com.uj.rcbackend.configurationutilities.extractionfeeds.FilePropertiesFeed
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.createDirectories
-import kotlin.io.path.createFile
 import kotlin.io.path.exists
 import kotlin.io.path.outputStream
 import kotlin.test.assertEquals

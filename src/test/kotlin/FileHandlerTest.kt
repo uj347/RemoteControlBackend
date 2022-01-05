@@ -11,9 +11,9 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.TrueFileFilter
 import org.junit.Before
 import org.junit.Test
-import remotecontrolbackend.moshi.PathAdapter
-import remotecontrolbackend.netty_part.chunked_part.file_handler_part.ConcreteFileHandler
-import remotecontrolbackend.netty_part.chunked_part.file_handler_part.DispatchResult
+import com.uj.rcbackend.moshi.PathAdapter
+import com.uj.rcbackend.nettypart.chunkedpart.filehandlerpart.ConcreteFileHandler
+import com.uj.rcbackend.nettypart.chunkedpart.filehandlerpart.DispatchResult
 import java.io.FileInputStream
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path

@@ -1,5 +1,5 @@
 
-rootProject.name = "CoroutineTest"
+rootProject.name = "RemoteControlBackend"
 pluginManagement {
     repositories {
         mavenLocal()

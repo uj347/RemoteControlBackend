@@ -1,8 +1,8 @@
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
-import remotecontrolbackend.command_invoker_part.command_hierarchy.mocks.MockCommand
-import remotecontrolbackend.command_invoker_part.command_repo.createReference
+import com.uj.rcbackend.commandinvokerpart.commandhierarchy.mocks.MockCommand
+import com.uj.rcbackend.commandinvokerpart.commandrepo.createReference
 import java.nio.file.Paths
 import kotlin.test.assertContains
 import kotlin.test.assertNotNull

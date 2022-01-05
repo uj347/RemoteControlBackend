@@ -1,33 +1,32 @@
 package IntrestingTests.propfuckerty
 
-import remotecontrolbackend.configuration_utilities.configuation_etaps.ArgExtractionEtap
-import remotecontrolbackend.configuration_utilities.configuation_etaps.CheckEtap
-import remotecontrolbackend.configuration_utilities.configuation_etaps.FileExtractionEtap
-import remotecontrolbackend.configuration_utilities.configuation_etaps.ProcessingEtap
+import com.uj.rcbackend.appProperties
+import com.uj.rcbackend.configurationutilities.PropertiesEngine
+import com.uj.rcbackend.configurationutilities.Property
+import com.uj.rcbackend.propertiesPreprocessorDependencies
 import java.nio.file.Paths
 import java.util.*
-import kotlin.io.path.inputStream
+import kotlin.io.path.createDirectories
+import kotlin.io.path.exists
+import kotlin.io.path.outputStream
 
-const val TEST_DIRECTORY="j:\\Ujtrash\\Test\\"
-fun main1(){
-    val dir= Paths.get(TEST_DIRECTORY)
-    val firstPropPath=dir.resolve("testprop1.properties")
-    val secondPropPath=dir.resolve("testprop2.properties")
-    val propbj=Properties()
-    propbj.printPropWithMsg("After construction")
-    propbj.load(firstPropPath.inputStream())
-    propbj.printPropWithMsg("After loading first file")
-    propbj.load(secondPropPath.inputStream())
-    propbj.printPropWithMsg("After loading second file")
-}
-fun Properties.printPropWithMsg(stringMsg:String){
-    println("Printing properties {$stringMsg}" )
-    for(propName in this.stringPropertyNames()){
-        println(propName+"< _______  >"+this.getProperty(propName))
+const val TEST_DIRECTORY="C:\\Ujtrash\\TestProps\\"
+fun main (args:Array<String>){
+    val testP=Paths.get(TEST_DIRECTORY)
+    val pathToPropFile=Paths.get(TEST_DIRECTORY).resolve("testy.properties")
+    if(!testP.exists()){
+        testP.createDirectories()
     }
+    val modifiedArgs=args+"plup==$pathToPropFile"
+    val prop=Properties().also { it.setProperty("workdir","tumbaumba")
+    it.store(pathToPropFile.outputStream(), "No comments!")}
+    val localProps= appProperties.map{it.generateNotConfiguredClone()}
+    val propertiesEngine= PropertiesEngine.Factory(propertiesPreprocessorDependencies).newInstance(modifiedArgs.asList())
+    propertiesEngine.fire(localProps).printPropWithMsg()
+}
+    
+fun Collection<Property>.printPropWithMsg(){
+        forEach { println(it.propertyName+" <---setted propery--->  "+ it.propertyValues) }
 }
 
 
-fun main(){
-    val argExtractionEtap:ArgExtractionEtap=ProcessingEtap.provideInstance(ArgExtractionEtap::class).also { println("${it::class.qualifiedName}") }
-}

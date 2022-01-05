@@ -11,12 +11,10 @@ import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.http.*
 import io.netty.handler.codec.http.HttpHeaderValues.APPLICATION_JSON
 import io.netty.handler.logging.LoggingHandler
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import remotecontrolbackend.ROOT_DIR
-import remotecontrolbackend.command_invoker_part.command_hierarchy.BatCommand
-import remotecontrolbackend.command_invoker_part.command_hierarchy.SerializableCommand
-import remotecontrolbackend.moshi.PathAdapter
+import com.uj.rcbackend.ROOT_DIR
+import com.uj.rcbackend.commandinvokerpart.commandhierarchy.BatCommand
+import com.uj.rcbackend.commandinvokerpart.commandhierarchy.SerializableCommand
+import com.uj.rcbackend.moshi.PathAdapter
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
