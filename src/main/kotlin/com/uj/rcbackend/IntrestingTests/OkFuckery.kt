@@ -1,4 +1,4 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 import kotlinx.coroutines.*
 import org.apache.commons.compress.utils.IOUtils

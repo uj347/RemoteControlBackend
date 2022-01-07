@@ -1,4 +1,4 @@
-package IntrestingTests.sql_poligon
+package com.uj.rcbackend.IntrestingTests.sql_poligon
 
  class Booba {
      var boobaId:Long?=null

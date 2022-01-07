@@ -1,25 +1,16 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.HttpHeaderValues
-import io.netty.handler.ssl.PemPrivateKey
-import io.netty.handler.ssl.SslContextBuilder
-import kotlinx.coroutines.*
 import nl.altindag.ssl.SSLFactory
 import nl.altindag.ssl.util.PemUtils
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okio.*
 import java.io.IOException
-import java.net.Socket
-import java.nio.file.Files
 import java.nio.file.Paths
-import java.security.KeyStore
-import java.security.Principal
-import java.security.PrivateKey
-import java.security.cert.X509Certificate
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import javax.net.ssl.*

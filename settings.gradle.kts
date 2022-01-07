@@ -1,4 +1,3 @@
-
 rootProject.name = "RemoteControlBackend"
 pluginManagement {
     repositories {

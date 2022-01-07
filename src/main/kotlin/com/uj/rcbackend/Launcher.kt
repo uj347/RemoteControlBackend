@@ -1,4 +1,4 @@
-@file:JvmName("UjMain")
+
 package com.uj.rcbackend
 
 import APP_COROUTINE_CONTEXT_LITERAL
@@ -12,6 +12,8 @@ import com.uj.rcbackend.configurationutilities.feedgenerators.DependentFeedGener
 import com.uj.rcbackend.dnssdpart.DnsSdManager
 import com.uj.rcbackend.fileservicepart.FileService
 import com.uj.rcbackend.nettypart.NettyConnectionManager
+import io.netty.channel.ChannelOutboundHandlerAdapter
+import org.h2.security.auth.H2AuthConfig
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -61,6 +63,8 @@ fun main(args:Array<String>) {
                .dbPassword(it.getValue("password").getSingleString())
                .buildMainComponent()
                .getLauncher()
+
+           launcher.launch()
        }
 
 //        val launcher=DaggerMainComponent.builder()
@@ -117,13 +121,8 @@ lateinit var commandInvoker: CommandInvoker
          nettyConnectionManager.launchNetty()
         appScope.launch {
             fileService.initializeFileService()
+            dnsSdManager.launchDnsSd(this)
+            commandInvoker.launchCommandInvoker()
         }
-        commandInvoker.launchCommandInvoker()
-        appScope.launch(Dispatchers.IO) { dnsSdManager.launchDnsSd(this) }
-
-
     }
-
-
 }
-

@@ -1,4 +1,4 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi

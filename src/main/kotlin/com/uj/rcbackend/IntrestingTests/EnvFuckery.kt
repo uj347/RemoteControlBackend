@@ -1,4 +1,4 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 
 fun main(){

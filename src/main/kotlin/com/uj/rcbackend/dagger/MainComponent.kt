@@ -208,6 +208,7 @@ interface DataBaseModule{
             val jdbcUrl="jdbc:h2:file:$dbDir/$DB_FILE_NAME;CIPHER=AES;USER=uj-remote-app;PASSWORD=$pswd root;MODE=MYSQL;DATABASE_TO_LOWER=TRUE"
             val hikariDataSource=HikariDataSource()
             hikariDataSource.jdbcUrl=jdbcUrl
+            hikariDataSource.driverClassName="org.h2.Driver"
 //            hikariDataSource.password=pswd
             return Pair (H2Database.invoke(hikariDataSource.asJdbcDriver()),hikariDataSource)
         }
@@ -218,7 +219,7 @@ interface DataBaseModule{
         @Named(IN_MEMORY_DB_LITEREAL)
         @Provides
         fun provideH2MemDb():@JvmSuppressWildcards Pair<H2Database,HikariDataSource>{
-            val jdbcUrl="jdbc:h2:mem:runtimeDB#${runTimeDbCounter++};MODE=MYSQL;DATABASE_TO_LOWER=TRUE"
+            val jdbcUrl="jdbc:h2:mem:runtimeDB#${runTimeDbCounter++};MODE=MYSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
             val hikariDataSource=HikariDataSource()
             hikariDataSource.maximumPoolSize=1
             hikariDataSource.jdbcUrl=jdbcUrl

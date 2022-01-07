@@ -1,9 +1,12 @@
 
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.kotlin.dsl.sqldelight
+import kotlin.io.path.exists
 
 
 buildscript {
+
+
     repositories {
 
         mavenCentral()
@@ -14,16 +17,15 @@ buildscript {
         classpath("com.squareup.sqldelight:gradle-plugin:1.5.3")
     }
 
-
-
-
 }
 
 plugins {
     kotlin("jvm") version "1.5.31"
     kotlin("kapt") version "1.5.31"
+    application
     id("com.squareup.sqldelight")
 }
+
 
 group = "me.uj347"
 version = "1.0-SNAPSHOT"
@@ -47,7 +49,7 @@ sqldelight {
 
 dependencies {
     implementation("com.h2database:h2:2.0.202")
-    implementation ("mysql:mysql-connector-java:8.0.26")
+   // implementation ("mysql:mysql-connector-java:8.0.26")
     implementation ("com.squareup.sqldelight:jdbc-driver:1.5.3")
     testImplementation(kotlin("test"))
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
@@ -93,20 +95,54 @@ sourceSets {
     }
 }
 
-    tasks.jar {
-        manifest {
-            attributes["Main-Class"] = "com.uj.rcbackend.UjMain"
+application {
+    mainClass.set("com.uj.rcbackend.LauncherKt")
+}
+tasks {
+    val fatJar = register<Jar>("fatJar") {
+        dependsOn.addAll(listOf("compileJava", "compileKotlin", "processResources")) // We need this for Gradle optimization to work
+        archiveFileName.set("2.jar")
+        destinationDirectory.set(File("j:\\"))
+      //archiveClassifier.set("standalone") // Naming the jar
+        if(archiveFile.get().asFile.exists()){
+            archiveFile.get().asFile.delete()
 
         }
-//        destinationDirectory.set(File("c:\\ujtrash\\"))
-//        archiveFileName.set("testone.jar")
-        configurations["compileClasspath"].forEach { file: File ->
-            from(zipTree(file.absoluteFile))
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        manifest { attributes(mapOf("Main-Class" to application.mainClass))
         }
-        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        // Provided we set it up in the application plugin configuration
+        val sourcesMain = sourceSets.main.get()
+        val contents = configurations.runtimeClasspath.get()
+            .map { if (it.isDirectory) {
+                it
+            } else zipTree(it) } +
+                sourcesMain.output
+
+
+        from(contents)
+
+        val signFileRegex=Regex(".+\\.[\"SF\"\"DSA\"\"sf\"\"dsa\"]")
+        exclude { it.name=="INDEX.LIST" }
+        exclude { it.name.contains(signFileRegex) }
     }
+    build {
+        dependsOn(fatJar) // Trigger fat jar creation during build
+    }
+}
 
-
+//    tasks.jar {
+//        manifest {
+//            attributes["Main-Class"] = "com.uj.rcbackend.IntrestingTests.propfuckerty.PropTestingKt"
+//
+//        }
+////        destinationDirectory.set(File("c:\\ujtrash\\"))
+////        archiveFileName.set("testone.jar")
+//        configurations["compileClasspath"].forEach { file: File ->
+//            from(zipTree(file.absoluteFile))
+//        }
+//        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+//    }
 
 
 tasks.withType<KotlinCompile> {

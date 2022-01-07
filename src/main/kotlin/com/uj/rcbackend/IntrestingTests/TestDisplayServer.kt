@@ -1,4 +1,4 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.ChannelFuture
@@ -10,11 +10,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
 import io.netty.handler.codec.string.StringDecoder
 import io.netty.handler.logging.LoggingHandler
-import io.netty.handler.ssl.ClientAuth
-import io.netty.handler.ssl.SslContextBuilder
 import io.netty.util.internal.logging.InternalLoggerFactory
 import io.netty.util.internal.logging.Log4J2LoggerFactory
-import java.io.File
 
 fun main(){
 

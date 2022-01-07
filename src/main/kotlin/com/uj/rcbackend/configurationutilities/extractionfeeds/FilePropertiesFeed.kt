@@ -28,7 +28,9 @@ companion object{
     private fun extractAllPropFilesFromDir(dir: Path):Set<Path>{
         val result= mutableSetOf<Path>()
         if (dir.isDirectory()){
-            Files.newDirectoryStream(dir).filter { it.extension=="properties" }.forEach (result::add)
+            Files.newDirectoryStream(dir).use{
+                it.filter { it.extension=="properties" }.forEach (result::add)
+            }
         }
         return result
     }

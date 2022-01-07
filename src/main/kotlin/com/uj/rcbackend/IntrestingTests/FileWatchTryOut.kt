@@ -1,16 +1,13 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.apache.commons.io.FileUtils
-import org.apache.commons.io.file.PathUtils
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor
 import org.apache.commons.io.monitor.FileAlterationObserver
 import java.io.File
 import java.nio.file.Paths
-import java.util.concurrent.ConcurrentSkipListSet
 
 fun main(){
     println("Digits in number 100 : ${digitsInNumber(100)}")

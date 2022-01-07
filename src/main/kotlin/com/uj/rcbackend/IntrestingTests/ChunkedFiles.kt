@@ -1,4 +1,4 @@
-package IntrestingTests
+package com.uj.rcbackend.IntrestingTests
 
 import io.netty.channel.*
 import io.netty.channel.embedded.EmbeddedChannel
